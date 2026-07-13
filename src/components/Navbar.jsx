@@ -52,12 +52,10 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
               src="/logo.png"
               alt="RentMyThing Logo"
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                objectFit: 'cover',
-                boxShadow: '0 4px 14px rgba(234, 88, 12, 0.35)',
-                border: '1.5px solid rgba(234, 88, 12, 0.2)',
+                width: 44,
+                height: 44,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 3px 8px rgba(15, 23, 42, 0.15))',
                 transition: 'transform 0.2s ease',
               }}
             />

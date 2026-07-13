@@ -308,14 +308,12 @@ export default function AuthModal({ onClose, onSuccess }) {
             src="/logo.png"
             alt="RentMyThing Logo"
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              objectFit: 'cover',
-              margin: '0 auto 14px',
+              width: 68,
+              height: 68,
+              objectFit: 'contain',
+              margin: '0 auto 12px',
               display: 'block',
-              boxShadow: '0 6px 18px rgba(234, 88, 12, 0.35)',
-              border: '2px solid rgba(234, 88, 12, 0.25)',
+              filter: 'drop-shadow(0 6px 16px rgba(15, 23, 42, 0.2))',
             }}
           />
           <h2 style={{ fontSize: 24, marginBottom: 6 }}>

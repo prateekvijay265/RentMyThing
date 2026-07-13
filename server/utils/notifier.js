@@ -2,28 +2,23 @@
  * Sends a real live email OTP using Nodemailer & SMTP (Gmail App Password, Brevo, SendGrid, Outlook, etc.)
  */
 async function sendRealEmailOTP(recipientEmail, otpCode) {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const secure = port === 465; // true for 465, false for other ports
   const user = process.env.SMTP_EMAIL || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
+  const rawPass = process.env.SMTP_PASS || process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
-  if (!user || !pass) {
+  if (!user || !rawPass) {
     console.log(`[NOTIFIER INFO] Real Email OTP (${otpCode}) generated for ${recipientEmail}.`);
     console.log(`[SMTP CONFIG NOTICE] To deliver live emails to user inboxes, add SMTP_EMAIL and SMTP_PASS (Gmail App Password) to your Render environment variables.`);
     return { sent: false, reason: 'Missing SMTP credentials in process.env' };
   }
 
   try {
+    const pass = rawPass.replace(/\s+/g, ''); // Strip any spaces copied from Google App Password box
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure,
+      service: 'gmail',
       auth: { user, pass },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000
+      connectionTimeout: 8000,
+      greetingTimeout: 8000
     });
 
     const htmlContent = `
@@ -109,13 +104,15 @@ async function sendRealSmsOTP(phoneNumber, otpCode) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          route: 'otp',
-          variables_values: otpCode,
+          route: 'q',
+          message: `Your RentMyThing campus verification code is: ${otpCode}. Valid for 10 minutes.`,
+          language: 'english',
+          flash: 0,
           numbers: cleanNumber
         })
       });
       const data = await response.json();
-      console.log(`[FAST2SMS SUCCESS] SMS/WhatsApp OTP delivered to +91 ${cleanNumber}`);
+      console.log(`[FAST2SMS RESPONSE]`, JSON.stringify(data));
       return { sent: true, provider: 'fast2sms', response: data };
     } catch (err) {
       console.error(`[FAST2SMS ERROR]`, err.message);

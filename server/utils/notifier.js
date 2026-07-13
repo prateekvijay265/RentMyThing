@@ -63,12 +63,40 @@ async function sendRealEmailOTP(recipientEmail, otpCode) {
 }
 
 /**
- * Sends a real live SMS OTP using Fast2SMS (+91 Indian numbers) or Twilio
+ * Sends a real live SMS or WhatsApp Business OTP using Fast2SMS (+91 Indian numbers) or Meta WhatsApp Cloud API
  */
 async function sendRealSmsOTP(phoneNumber, otpCode) {
-  const cleanNumber = phoneNumber.replace(/\D/g, '');
-  
-  // Option 1: Fast2SMS (Most popular & affordable for Indian +91 mobile numbers)
+  const cleanNumber = phoneNumber.replace(/\D/g, '').slice(-10);
+
+  // Option 1: Official Meta WhatsApp Business Cloud API (1,000 free OTP conversations/month)
+  const waToken = process.env.WHATSAPP_TOKEN;
+  const waPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (waToken && waPhoneId) {
+    try {
+      const response = await fetch(`https://graph.facebook.com/v18.0/${waPhoneId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${waToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: `91${cleanNumber}`,
+          type: 'text',
+          text: {
+            body: `🔐 *RentMyThing Campus Verification*\n\nYour 6-digit OTP code is: *${otpCode}*\n\nValid for 10 minutes. Do not share this code.`
+          }
+        })
+      });
+      const data = await response.json();
+      console.log(`[WHATSAPP BUSINESS SUCCESS] WhatsApp OTP sent to +91 ${cleanNumber}`);
+      return { sent: true, provider: 'whatsapp_cloud', response: data };
+    } catch (err) {
+      console.error(`[WHATSAPP CLOUD ERROR]`, err.message);
+    }
+  }
+
+  // Option 2: Fast2SMS API (Supports Quick OTP & WhatsApp routing for Indian +91 numbers)
   const fast2smsKey = process.env.FAST2SMS_API_KEY;
   if (fast2smsKey) {
     try {
@@ -79,28 +107,26 @@ async function sendRealSmsOTP(phoneNumber, otpCode) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          route: 'q',
-          message: `Your RentMyThing verification OTP is ${otpCode}. Valid for 10 minutes. Do not share.`,
-          language: 'english',
-          flash: 0,
+          route: 'otp',
+          variables_values: otpCode,
           numbers: cleanNumber
         })
       });
       const data = await response.json();
-      console.log(`[FAST2SMS SUCCESS] SMS delivered to +91 ${cleanNumber}`);
+      console.log(`[FAST2SMS SUCCESS] SMS/WhatsApp OTP delivered to +91 ${cleanNumber}`);
       return { sent: true, provider: 'fast2sms', response: data };
     } catch (err) {
       console.error(`[FAST2SMS ERROR]`, err.message);
     }
   }
 
-  // Option 2: Twilio
+  // Option 3: Twilio SMS / WhatsApp
   const twilioSid = process.env.TWILIO_ACCOUNT_SID;
   const twilioToken = process.env.TWILIO_AUTH_TOKEN;
   const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
   if (twilioSid && twilioToken && twilioFrom) {
     try {
-      const formattedPhone = cleanNumber.startsWith('91') ? `+${cleanNumber}` : `+91${cleanNumber}`;
+      const formattedPhone = `+91${cleanNumber}`;
       const authHeader = 'Basic ' + Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
       const params = new URLSearchParams();
       params.append('To', formattedPhone);
@@ -123,9 +149,9 @@ async function sendRealSmsOTP(phoneNumber, otpCode) {
     }
   }
 
-  console.log(`[NOTIFIER INFO] Real Mobile SMS OTP (${otpCode}) generated for +91 ${cleanNumber}.`);
-  console.log(`[SMS CONFIG NOTICE] To deliver live SMS messages to mobile phones, add FAST2SMS_API_KEY or TWILIO_ACCOUNT_SID to your Render environment variables.`);
-  return { sent: false, reason: 'Missing Fast2SMS or Twilio API keys' };
+  console.log(`[NOTIFIER INFO] Real Mobile OTP (${otpCode}) generated for +91 ${cleanNumber}.`);
+  console.log(`[SMS CONFIG NOTICE] To deliver live WhatsApp or SMS messages, add FAST2SMS_API_KEY or WHATSAPP_TOKEN to your Render environment variables.`);
+  return { sent: false, reason: 'Missing Fast2SMS or WhatsApp API keys' };
 }
 
 module.exports = {

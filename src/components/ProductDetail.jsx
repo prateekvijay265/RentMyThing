@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck, MapPin, MessageSquare, Phone, Mail, UserCheck, 
 import FraudAlert from './ai/FraudAlert';
 import { api } from '../api';
 
-export default function ProductDetail({ product, user, onBack, onOpenAuthModal, onBookingSuccess, onOpenDirectChat }) {
+export default function ProductDetail({ product, user, onBack, onOpenAuthModal, onBookingSuccess, onOpenDirectChat, onRunSafetyAudit }) {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() + 2);
     return d.toISOString().split('T')[0];
@@ -118,14 +118,24 @@ export default function ProductDetail({ product, user, onBack, onOpenAuthModal, 
                 </div>
               </div>
 
-              <button
-                onClick={() => onOpenDirectChat?.(product.ownerId || 'user_iitd_1', product.ownerName || 'Aravind Sharma', product)}
-                className="btn btn-secondary"
-                style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}
-              >
-                <MessageSquare size={15} color="var(--coral)" />
-                Open Verified Student Chat
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+                <button
+                  onClick={() => onOpenDirectChat?.(product.ownerId || 'user_iitd_1', product.ownerName || 'Aravind Sharma', product)}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  <MessageSquare size={15} color="var(--coral)" />
+                  Open Verified Student Chat
+                </button>
+                <button
+                  onClick={() => onRunSafetyAudit?.(product)}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', borderColor: '#10b981', color: '#059669', background: '#ecfdf5' }}
+                >
+                  <ShieldCheck size={15} color="#10b981" />
+                  Run AI Fraud & Safety Audit
+                </button>
+              </div>
             </div>
           </div>
         </div>

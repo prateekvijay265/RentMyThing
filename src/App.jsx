@@ -21,9 +21,15 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showListingModal, setShowListingModal] = useState(false);
   const [activeChatPeer, setActiveChatPeer] = useState(null);
+  const [auditTargetProduct, setAuditTargetProduct] = useState(null);
   const [user, setUser] = useState(null);
   const [wishlistIds, setWishlistIds] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
+
+  const handleRunSafetyAuditForProduct = (prod) => {
+    setAuditTargetProduct(prod);
+    setActiveView('ai');
+  };
 
   // Load current user and initial products
   const fetchUserAndProducts = async () => {
@@ -136,7 +142,11 @@ export default function App() {
 
         {(activeView === 'ai' || activeView === 'aifraud') && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <AIFraudCenter allProducts={allProducts} onSelectProduct={handleSelectProduct} />
+            <AIFraudCenter
+              allProducts={allProducts}
+              initialProduct={auditTargetProduct}
+              onSelectProduct={handleSelectProduct}
+            />
           </div>
         )}
 
@@ -156,6 +166,7 @@ export default function App() {
             onOpenAuthModal={() => setShowAuthModal(true)}
             onBookingSuccess={() => setActiveView('dashboard')}
             onOpenDirectChat={handleOpenDirectChat}
+            onRunSafetyAudit={handleRunSafetyAuditForProduct}
           />
         )}
 

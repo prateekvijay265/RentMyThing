@@ -29,6 +29,10 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
   const [editPhone, setEditPhone] = useState(user?.phone || '');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
+  // OTP verification when changing mobile number in Dashboard
+  const [phoneChangeOtpStep, setPhoneChangeOtpStep] = useState(false);
+  const [phoneChangeOtpInput, setPhoneChangeOtpInput] = useState('');
+
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
@@ -62,8 +66,26 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
     }
   }, [user]);
 
-  const handleSaveVerification = (e) => {
+  const handleSaveVerification = async (e) => {
     e.preventDefault();
+    const cleanNewPhone = editPhone.replace(/\D/g, '');
+    const cleanOldPhone = (user.phone || '').replace(/\D/g, '');
+
+    // If phone changed, verify new phone with OTP first
+    if (cleanNewPhone && cleanNewPhone !== cleanOldPhone) {
+      try {
+        await api.sendMobileOtp(cleanNewPhone);
+        setPhoneChangeOtpStep(true);
+      } catch (err) {
+        alert('Could not send verification code: ' + (err.message || 'Mobile number already exists.'));
+      }
+      return;
+    }
+
+    await completeUpdateDetails();
+  };
+
+  const completeUpdateDetails = async () => {
     const updatedUser = {
       ...user,
       college: editCollege.trim() || user.college,
@@ -71,10 +93,32 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
       phone: editPhone.trim() || user.phone,
     };
     localStorage.setItem('rt_user', JSON.stringify(updatedUser));
+    try {
+      await api.updateProfile({
+        college: editCollege.trim(),
+        hostel: editHostel.trim(),
+        phone: editPhone.trim(),
+      });
+    } catch (e) {
+      console.error('Backend profile sync error:', e);
+    }
     onUpdateUser?.(updatedUser);
     setIsEditingVerification(false);
-    setSaveSuccessMsg('✓ Your real campus verification details were saved successfully!');
+    setPhoneChangeOtpStep(false);
+    setPhoneChangeOtpInput('');
+    setSaveSuccessMsg('✓ Campus verification details saved successfully!');
     setTimeout(() => setSaveSuccessMsg(''), 4000);
+  };
+
+  const handleVerifyPhoneChange = async (e) => {
+    e.preventDefault();
+    const cleanNewPhone = editPhone.replace(/\D/g, '');
+    try {
+      await api.verifyMobileOtp(cleanNewPhone, phoneChangeOtpInput);
+      await completeUpdateDetails();
+    } catch (err) {
+      alert('Verification failed: ' + (err.message || 'Invalid OTP code.'));
+    }
   };
 
   const handleVerifyOtp = async () => {
@@ -324,14 +368,49 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                  <button type="button" onClick={() => setIsEditingVerification(false)} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
-                    <Save size={15} /> Save Details
-                  </button>
-                </div>
+                {phoneChangeOtpStep ? (
+                  <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                      Enter 6-digit verification code sent to +91 {editPhone}
+                    </p>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={phoneChangeOtpInput}
+                      onChange={e => setPhoneChangeOtpInput(e.target.value)}
+                      placeholder="6-digit OTP code"
+                      className="input"
+                      style={{ textAlign: 'center', fontSize: 18, letterSpacing: '0.15em', fontWeight: 700, marginBottom: 12 }}
+                    />
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => setPhoneChangeOtpStep(false)}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifyPhoneChange}
+                        className="btn btn-primary"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        Verify & Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button type="button" onClick={() => setIsEditingVerification(false)} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                      <Save size={15} /> Save Details
+                    </button>
+                  </div>
+                )}
               </form>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

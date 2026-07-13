@@ -10,7 +10,7 @@ const TABS = [
   { id: 'verification', label: 'Campus ID & Verification', icon: Shield },
 ];
 
-export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdateUser, onLogout }) {
+export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdateUser, onLogout, onOpenDirectChat }) {
   const [activeTab, setActiveTab] = useState('listings');
   const [myListings, setMyListings] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
@@ -276,7 +276,14 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => onOpenDirectChat?.(b.ownerId || 'user_1', b.ownerName || 'Lender Student', `Rental: ${b.productTitle || 'Gear'}`)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ borderColor: 'var(--coral)', color: 'var(--coral)' }}
+                      >
+                        💬 Student Chat
+                      </button>
                       <button
                         onClick={() => {
                           setOtpBookingId(b.id);

@@ -165,6 +165,7 @@ export default function App() {
             onRefreshUser={fetchUserAndProducts}
             onSelectProduct={handleSelectProduct}
             onViewChange={handleViewChange}
+            onOpenDirectChat={handleOpenDirectChat}
           />
         )}
 

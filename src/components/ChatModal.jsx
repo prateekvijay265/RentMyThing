@@ -2,7 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, ShieldCheck, UserCheck, MessageSquare, AlertCircle } from 'lucide-react';
 import { api } from '../api';
 
-export default function ChatModal({ user, recipient, onClose }) {
+export default function ChatModal({ user, recipient, recipientId, recipientName, recipientDetails, onClose }) {
+  const rawDetails = recipient?.details || recipientDetails || 'Verified Campus Peer';
+  const peerDetailsString = typeof rawDetails === 'object' && rawDetails !== null
+    ? (rawDetails.title ? `Regarding: ${rawDetails.title}` : rawDetails.category || 'Gear Rental Peer')
+    : String(rawDetails);
+
+  const peer = recipient || {
+    id: recipientId || 'peer',
+    name: recipientName || 'Campus Student',
+    details: peerDetailsString
+  };
+
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -10,7 +21,7 @@ export default function ChatModal({ user, recipient, onClose }) {
 
   const loadMessages = async () => {
     try {
-      const data = await api.getMessages(recipient.id);
+      const data = await api.getMessages(peer.id);
       setMessages(data || []);
     } catch (err) {
       console.error('Chat load error:', err);
@@ -23,7 +34,7 @@ export default function ChatModal({ user, recipient, onClose }) {
     loadMessages();
     const interval = setInterval(loadMessages, 4000);
     return () => clearInterval(interval);
-  }, [recipient]);
+  }, [peer.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,7 +44,7 @@ export default function ChatModal({ user, recipient, onClose }) {
     e.preventDefault();
     if (!inputText.trim()) return;
     try {
-      await api.sendMessage(recipient.id, inputText);
+      await api.sendMessage(peer.id, inputText);
       setInputText('');
       loadMessages();
     } catch (err) {
@@ -65,14 +76,14 @@ export default function ChatModal({ user, recipient, onClose }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700,
             }}>
-              {recipient.name?.[0]?.toUpperCase() || 'P'}
+              {peer.name?.[0]?.toUpperCase() || 'P'}
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{recipient.name}</h4>
+                <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{peer.name}</h4>
                 <span className="badge badge-green" style={{ padding: '2px 6px', fontSize: 10 }}>Verified</span>
               </div>
-              <p className="body-sm" style={{ fontSize: 11 }}>Campus Peer · 4s live sync</p>
+              <p className="body-sm" style={{ fontSize: 11 }}>{peerDetailsString}</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)' }}>

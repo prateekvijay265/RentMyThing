@@ -6,6 +6,9 @@ export default function NLPSearchBar({ onSearch, onParsed, placeholder, classNam
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState(null);
   const debounceRef = useRef(null);
+  // Keep a stable ref to onParsed so we never need it in the dep array
+  const onParsedRef = useRef(onParsed);
+  useEffect(() => { onParsedRef.current = onParsed; });
 
   useEffect(() => {
     if (!query.trim()) { setParsed(null); return; }
@@ -23,7 +26,7 @@ export default function NLPSearchBar({ onSearch, onParsed, placeholder, classNam
       setTimeout(() => {
         setParsing(false);
         setParsed(Object.keys(fakeParsed).length ? fakeParsed : null);
-        onParsed?.(fakeParsed);
+        onParsedRef.current?.(fakeParsed);
       }, 400);
     }, 500);
     return () => clearTimeout(debounceRef.current);

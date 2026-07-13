@@ -177,6 +177,13 @@ export default function App() {
             onSelectProduct={handleSelectProduct}
             onViewChange={handleViewChange}
             onOpenDirectChat={handleOpenDirectChat}
+            onUpdateUser={(updated) => setUser(updated)}
+            onLogout={() => {
+              setUser(null);
+              localStorage.removeItem('rt_token');
+              localStorage.removeItem('rt_user');
+              setActiveView('home');
+            }}
           />
         )}
 

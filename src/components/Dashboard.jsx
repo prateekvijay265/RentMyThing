@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, Package, Calendar, Heart, Shield, CheckCircle, Clock, Key, AlertCircle, Edit3, LogOut, Save } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ShieldCheck, Plus, Package, Calendar, Heart, Shield, CheckCircle, Key, Edit3, LogOut, Save } from 'lucide-react';
 import { api } from '../api';
 import ProductCard from './ProductCard';
 
@@ -33,7 +33,7 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
   const [phoneChangeOtpStep, setPhoneChangeOtpStep] = useState(false);
   const [phoneChangeOtpInput, setPhoneChangeOtpInput] = useState('');
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -55,7 +55,7 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -64,7 +64,7 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
       setEditHostel(user.hostel || '');
       setEditPhone(user.phone || '');
     }
-  }, [user]);
+  }, [fetchData, user]);
 
   const handleSaveVerification = async (e) => {
     e.preventDefault();

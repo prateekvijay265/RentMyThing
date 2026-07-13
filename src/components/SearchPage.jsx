@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, X, ChevronDown, HelpCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { SlidersHorizontal, ChevronDown, HelpCircle, Sparkles } from 'lucide-react';
 import ProductCard from './ProductCard';
 import NLPSearchBar from './ai/NLPSearchBar';
 import { api } from '../api';
@@ -16,7 +16,7 @@ export default function SearchPage({ onSelectProduct, onWishlistToggle, wishlist
   const [priceMax, setPriceMax] = useState(2000);
   const [nlpInfo, setNlpInfo] = useState(null);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getProducts({
@@ -36,9 +36,9 @@ export default function SearchPage({ onSelectProduct, onWishlistToggle, wishlist
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, searchQuery, sortBy, priceMax]);
 
-  useEffect(() => { fetchProducts(); }, [selectedCategory, searchQuery, sortBy, priceMax]);
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const handleNLPResult = (parsed) => {
     setNlpInfo(parsed);

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, ShieldCheck, UserCheck, MessageSquare, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Send, ShieldCheck, MessageSquare } from 'lucide-react';
 import { api } from '../api';
 
 export default function ChatModal({ user, recipient, recipientId, recipientName, recipientDetails, onClose }) {
@@ -19,7 +19,7 @@ export default function ChatModal({ user, recipient, recipientId, recipientName,
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef(null);
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       const data = await api.getMessages(peer.id);
       setMessages(data || []);
@@ -28,13 +28,13 @@ export default function ChatModal({ user, recipient, recipientId, recipientName,
     } finally {
       setLoading(false);
     }
-  };
+  }, [peer.id]);
 
   useEffect(() => {
     loadMessages();
     const interval = setInterval(loadMessages, 4000);
     return () => clearInterval(interval);
-  }, [peer.id]);
+  }, [loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

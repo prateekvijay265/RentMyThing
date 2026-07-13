@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Users, AlertTriangle, Sparkles, CheckCircle, Package, TrendingUp, Database, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, CheckCircle } from 'lucide-react';
 import { api } from '../api';
 
 export default function AdminPanel() {
-  const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState(null);
-  const [reports, setReports] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Live Price Audit Test
   const [testItem, setTestItem] = useState('Sony Alpha A6000');
@@ -15,18 +12,12 @@ export default function AdminPanel() {
 
   useEffect(() => {
     async function load() {
-      setLoading(true);
+      setIsLoading(true);
       try {
-        const [sData, rData, uData] = await Promise.all([
-          api.getAdminStats(),
-          api.getAdminReports(),
-          api.getAdminUsers()
-        ]);
+        const sData = await api.getAdminStats();
         setStats(sData);
-        setReports(rData || []);
-        setUsers(uData || []);
       } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+      finally { setIsLoading(false); }
     }
     load();
   }, []);

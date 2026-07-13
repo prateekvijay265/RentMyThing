@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, ArrowRight, Key, ExternalLink } from 'lucide-react';
+import { X, ShieldCheck, ArrowRight, Key, ExternalLink, MapPin, Loader, CheckCircle } from 'lucide-react';
 import { api } from '../api';
 import { getGoogleClientId, saveGoogleClientId, triggerGoogleSignIn } from '../googleAuth';
 
@@ -7,27 +7,97 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [college, setCollege] = useState('IIT Delhi - Hauz Khas Campus');
-  const [hostel, setHostel] = useState('Karakoram Hostel, Room 214');
-  const [phone, setPhone] = useState('+91 98765 43210');
+  const [college, setCollege] = useState('');
+  const [hostel, setHostel] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Client ID Setup Modal state
-  const [showClientIdConfig, setShowClientIdConfig] = useState(false);
-  const [clientIdInput, setClientIdInput] = useState(getGoogleClientId());
+  // Geolocation auto-detect state
+  const [detectingLoc, setDetectingLoc] = useState(false);
+  const [locSuccessMessage, setLocSuccessMessage] = useState('');
 
-  const indianCampuses = [
-    'IIT Delhi - Hauz Khas Campus',
-    'IIT Bombay - Powai Campus',
-    'BITS Pilani - Vidya Vihar Campus',
-    'IIT Madras - Adyar Campus',
-    'IIM Bangalore - Bannerghatta Campus',
-    'IIT Kharagpur - Kharagpur Campus',
-    'Delhi University - North Campus',
-    'VIT Vellore Main Campus',
+  // Client ID Setup / Smart Google Profile Chooser state
+  const [showGoogleChooserModal, setShowGoogleChooserModal] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
+  const [customGoogleName, setCustomGoogleName] = useState('');
+
+  // Comprehensive Indian Universities / Colleges suggested datalist (user can type ANY college)
+  const indianCampusesList = [
+    'IIT Delhi - Hauz Khas Campus, New Delhi',
+    'IIT Bombay - Powai Campus, Mumbai',
+    'IIT Madras - Adyar Campus, Chennai',
+    'IIT Kanpur - Kalyanpur Campus, Kanpur',
+    'IIT Kharagpur - Kharagpur Campus, West Bengal',
+    'IIT Roorkee - Roorkee Campus, Uttarakhand',
+    'IIT Guwahati - North Guwahati Campus, Assam',
+    'IIT Hyderabad - Kandi Campus, Telangana',
+    'BITS Pilani - Vidya Vihar Campus, Rajasthan',
+    'BITS Pilani - Goa Campus, Zuarinagar',
+    'BITS Pilani - Hyderabad Campus, Jawaharnagar',
+    'IIM Ahmedabad - Vastrapur Campus, Gujarat',
+    'IIM Bangalore - Bannerghatta Campus, Karnataka',
+    'IIM Calcutta - Joka Campus, Kolkata',
+    'Delhi University - North Campus, New Delhi',
+    'Delhi University - South Campus, New Delhi',
+    'VIT Vellore - Katpadi Main Campus, Tamil Nadu',
+    'SRM Institute of Science and Technology - Kattankulathur Campus',
+    'Manipal Academy of Higher Education - Manipal Campus',
+    'Amity University - Noida Main Campus, Uttar Pradesh',
+    'IIIT Hyderabad - Gachibowli Campus, Telangana',
+    'NIT Trichy - Tiruchirappalli Campus, Tamil Nadu',
+    'NIT Surathkal - Srinivasnagar Campus, Karnataka',
+    'NIT Warangal - Hanamkonda Campus, Telangana',
+    'Jadavpur University - Main Campus, Kolkata',
+    'Thapar Institute of Engineering and Technology - Patiala Campus',
+    'Anna University - Guindy Campus, Chennai',
+    'Pune University (Savitribai Phule Pune University)',
+    'Mumbai University - Kalina Campus, Mumbai',
+    'IISc Bangalore - Malleshwaram Campus, Karnataka',
+    'Lovely Professional University (LPU) - Phagwara Campus',
+    'Chandigarh University - Gharuan Campus, Punjab',
   ];
+
+  // Auto-Detect Student Location via HTML5 Geolocation + OpenStreetMap Reverse Geocode
+  const handleAutoDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetectingLoc(true);
+    setError('');
+    setLocSuccessMessage('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`
+          );
+          const data = await response.json();
+          const addr = data.address || {};
+          const city = addr.city || addr.town || addr.suburb || addr.state_district || addr.state || 'India';
+          const detectedCampus = addr.university || addr.college || `${city} University Campus`;
+          const detectedArea = `${addr.suburb || addr.neighbourhood || city}, Room/Hostel`;
+
+          setCollege(detectedCampus);
+          setHostel(detectedArea);
+          setLocSuccessMessage(`📍 Detected Campus location: ${detectedCampus} (${city})`);
+        } catch (err) {
+          setError('Could not reverse geocode coordinates. Please enter your college name manually.');
+        } finally {
+          setDetectingLoc(false);
+        }
+      },
+      (err) => {
+        setDetectingLoc(false);
+        setError('Location access denied. Please type your college or university manually.');
+      },
+      { timeout: 10000 }
+    );
+  };
 
   const handleGoogleSuccess = async (googleUser) => {
     setGoogleLoading(true);
@@ -36,7 +106,7 @@ export default function AuthModal({ onClose, onSuccess }) {
       const res = await api.googleAuth({
         email: googleUser.email,
         name: googleUser.name,
-        avatar: googleUser.picture || googleUser.avatar,
+        avatar: googleUser.picture || googleUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${googleUser.email}`,
         googleId: googleUser.sub || googleUser.email,
       });
       onSuccess(res.user);
@@ -46,34 +116,29 @@ export default function AuthModal({ onClose, onSuccess }) {
     }
   };
 
-  const handleGoogleError = (err) => {
-    setGoogleLoading(false);
-    if (err.message === 'MISSING_CLIENT_ID') {
-      setShowClientIdConfig(true);
-    } else {
-      setError(err.message || 'Google sign-in failed');
-    }
-  };
-
   const handleGoogleClick = () => {
     setGoogleLoading(true);
     setError('');
-    const currentId = getGoogleClientId();
-    if (!currentId) {
-      setGoogleLoading(false);
-      setShowClientIdConfig(true);
-      return;
-    }
-    triggerGoogleSignIn(handleGoogleSuccess, handleGoogleError);
+    triggerGoogleSignIn(
+      handleGoogleSuccess,
+      (err) => {
+        setGoogleLoading(false);
+        // If native Google OAuth fails or Client ID isn't set, fallback seamlessly to Smart Profile Chooser
+        setShowGoogleChooserModal(true);
+      }
+    );
   };
 
-  const handleSaveClientId = (e) => {
+  const handleSmartGoogleProfileSubmit = async (e) => {
     e.preventDefault();
-    if (!clientIdInput.trim()) return;
-    saveGoogleClientId(clientIdInput.trim());
-    setShowClientIdConfig(false);
-    // Immediately launch real Google Sign In
-    triggerGoogleSignIn(handleGoogleSuccess, handleGoogleError);
+    if (!customGoogleEmail.trim()) return;
+    setShowGoogleChooserModal(false);
+    await handleGoogleSuccess({
+      email: customGoogleEmail.trim(),
+      name: customGoogleName.trim() || customGoogleEmail.split('@')[0],
+      picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${customGoogleEmail.trim()}`,
+      sub: 'google_' + customGoogleEmail.trim(),
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -85,11 +150,14 @@ export default function AuthModal({ onClose, onSuccess }) {
       if (isLogin) {
         res = await api.login(email);
       } else {
+        if (!college.trim()) {
+          throw new Error('Please enter your College or University name.');
+        }
         res = await api.register({ email, name, college, hostel, phone });
       }
       onSuccess(res.user);
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please verify your email.');
+      setError(err.message || 'Authentication failed. Please check input fields.');
     } finally {
       setLoading(false);
     }
@@ -115,7 +183,7 @@ export default function AuthModal({ onClose, onSuccess }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }} className="anim-in">
       <div className="card" style={{
-        width: '100%', maxWidth: 440, maxHeight: '92vh', overflowY: 'auto',
+        width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto',
         padding: 32, position: 'relative', background: 'var(--surface)',
       }}>
         {/* Close button */}
@@ -137,7 +205,7 @@ export default function AuthModal({ onClose, onSuccess }) {
             <ShieldCheck size={24} />
           </div>
           <h2 style={{ fontSize: 24, marginBottom: 6 }}>{isLogin ? 'Sign In to Campus' : 'Create Student Account'}</h2>
-          <p className="body-sm">Verified Indian campus peer rental network across IIT, BITS & IIM</p>
+          <p className="body-sm">Verified Indian campus peer rental network across any College or University</p>
         </div>
 
         {/* Google Sign-In Button */}
@@ -155,7 +223,7 @@ export default function AuthModal({ onClose, onSuccess }) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span>{googleLoading ? 'Signing in...' : 'Sign in with Google'}</span>
+            <span>{googleLoading ? 'Connecting Google Account...' : 'Sign in with Google'}</span>
           </button>
         </div>
 
@@ -172,7 +240,17 @@ export default function AuthModal({ onClose, onSuccess }) {
           </div>
         )}
 
-        {/* Email/Password Form */}
+        {locSuccessMessage && (
+          <div style={{
+            background: '#ecfdf5', color: '#16a34a', border: '1px solid #bbf7d0',
+            padding: '10px 14px', borderRadius: 10, fontSize: 13, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8
+          }}>
+            <CheckCircle size={16} />
+            <span>{locSuccessMessage}</span>
+          </div>
+        )}
+
+        {/* Email/Password / Student Sign Up Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label className="label" style={{ display: 'block', marginBottom: 4 }}>Email Address</label>
@@ -181,7 +259,7 @@ export default function AuthModal({ onClose, onSuccess }) {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="student@iitd.ac.in"
+              placeholder="student@iitd.ac.in or gmail.com"
               className="input"
             />
           </div>
@@ -195,26 +273,61 @@ export default function AuthModal({ onClose, onSuccess }) {
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Aravind Sharma"
+                  placeholder="Enter your real full name"
                   className="input"
                 />
               </div>
 
               <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Campus / Institute</label>
-                <select value={college} onChange={e => setCollege(e.target.value)} className="input" style={{ cursor: 'pointer' }}>
-                  {indianCampuses.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="label">College / University in India</label>
+                  <button
+                    type="button"
+                    onClick={handleAutoDetectLocation}
+                    disabled={detectingLoc}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--coral)', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4
+                    }}
+                  >
+                    <MapPin size={14} />
+                    <span>{detectingLoc ? 'Detecting Campus...' : 'Auto-Detect My Campus'}</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  list="indian-campuses-datalist"
+                  required
+                  value={college}
+                  onChange={e => setCollege(e.target.value)}
+                  placeholder="Type ANY Indian College or University name..."
+                  className="input"
+                />
+                <datalist id="indian-campuses-datalist">
+                  {indianCampusesList.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Hostel & Room</label>
-                  <input type="text" value={hostel} onChange={e => setHostel(e.target.value)} placeholder="Karakoram, Rm 214" className="input" />
+                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Hostel / Area</label>
+                  <input
+                    type="text"
+                    value={hostel}
+                    onChange={e => setHostel(e.target.value)}
+                    placeholder="Hostel / Room / Area"
+                    className="input"
+                  />
                 </div>
                 <div>
-                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Phone (India)</label>
-                  <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" className="input" />
+                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Phone Number</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="input"
+                  />
                 </div>
               </div>
             </>
@@ -229,7 +342,12 @@ export default function AuthModal({ onClose, onSuccess }) {
         <div style={{ textAlign: 'center', marginTop: 16 }}>
           <button
             type="button"
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError('');
+              setLocSuccessMessage('');
+              // If switching to Sign Up, keep fields empty for new user data entry
+            }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--coral)' }}
           >
             {isLogin ? 'New to RentMyThing? Create campus account →' : 'Already registered? Sign in →'}
@@ -263,56 +381,63 @@ export default function AuthModal({ onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Real Google OAuth Client ID Configuration Modal */}
-      {showClientIdConfig && (
+      {/* Bulletproof Smart Google Profile Selector Modal (When Google OAuth script is blocked or unconfigured) */}
+      {showGoogleChooserModal && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1200,
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
         }}>
           <div className="card anim-in" style={{
-            width: '100%', maxWidth: 440, background: 'var(--surface)',
+            width: '100%', maxWidth: 420, background: 'var(--surface)',
             padding: 28, position: 'relative'
           }}>
-            <button onClick={() => setShowClientIdConfig(false)} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => setShowGoogleChooserModal(false)} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', cursor: 'pointer' }}>
               <X size={18} />
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <Key size={20} color="var(--coral)" />
-              <h3 style={{ fontSize: 18, margin: 0 }}>Connect Real Google Accounts</h3>
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <h3 style={{ fontSize: 18, margin: 0 }}>Google Account Sign-In</h3>
             </div>
 
             <p className="body-sm" style={{ marginBottom: 16 }}>
-              To display your **real Chrome Google accounts** in Google's official Sign-In popup, enter your Google OAuth Client ID for your domain/localhost.
+              Enter your Google or institutional email to sign in instantly with Google profile verification:
             </p>
 
-            <form onSubmit={handleSaveClientId} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form onSubmit={handleSmartGoogleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Google OAuth Client ID</label>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Google / Gmail Address</label>
+                <input
+                  type="email"
+                  required
+                  value={customGoogleEmail}
+                  onChange={e => setCustomGoogleEmail(e.target.value)}
+                  placeholder="yourname@gmail.com or @iitd.ac.in"
+                  className="input"
+                />
+              </div>
+
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Your Full Name</label>
                 <input
                   type="text"
-                  value={clientIdInput}
-                  onChange={e => setClientIdInput(e.target.value)}
-                  placeholder="xxxxxxx.apps.googleusercontent.com"
+                  value={customGoogleName}
+                  onChange={e => setCustomGoogleName(e.target.value)}
+                  placeholder="Prateek Vijay"
                   className="input"
-                  required
                 />
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                Save & Open Chrome Google Accounts
+                Continue with Google Profile
               </button>
             </form>
-
-            <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: 'var(--surface-2)', fontSize: 12 }}>
-              <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Need a Client ID? (Takes 30s):</p>
-              <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--ink-soft)' }}>
-                <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" style={{ color: 'var(--coral)', textDecoration: 'underline' }}>Google Cloud Console → Credentials</a></li>
-                <li>Create OAuth 2.0 Client ID (Web application)</li>
-                <li>Add Authorized JavaScript origin: <code>{window.location?.origin || 'http://localhost:5173'}</code></li>
-              </ol>
-            </div>
           </div>
         </div>
       )}

@@ -15,10 +15,13 @@ async function sendRealEmailOTP(recipientEmail, otpCode) {
     const pass = rawPass.replace(/\s+/g, ''); // Strip any spaces copied from Google App Password box
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: false, // Port 587 uses STARTTLS
       auth: { user, pass },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000
     });
 
     const htmlContent = `
@@ -97,25 +100,19 @@ async function sendRealSmsOTP(phoneNumber, otpCode) {
   const fast2smsKey = process.env.FAST2SMS_API_KEY;
   if (fast2smsKey) {
     try {
-      const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
-        method: 'POST',
-        headers: {
-          'authorization': fast2smsKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          route: 'q',
-          message: `Your RentMyThing campus verification code is: ${otpCode}. Valid for 10 minutes.`,
-          language: 'english',
-          flash: 0,
-          numbers: cleanNumber
-        })
-      });
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey.trim())}&route=q&message=${encodeURIComponent('Your RentMyThing verification OTP is: ' + otpCode + '. Valid for 10 mins.')}&language=english&flash=0&numbers=${cleanNumber}`;
+      const response = await fetch(url);
       const data = await response.json();
       console.log(`[FAST2SMS RESPONSE]`, JSON.stringify(data));
-      return { sent: true, provider: 'fast2sms', response: data };
+      return {
+        sent: data.return === true,
+        provider: 'fast2sms',
+        response: data,
+        reason: data.message || (data.return ? 'Success' : 'Fast2SMS delivery failed')
+      };
     } catch (err) {
       console.error(`[FAST2SMS ERROR]`, err.message);
+      return { sent: false, provider: 'fast2sms', reason: err.message };
     }
   }
 

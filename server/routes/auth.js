@@ -32,7 +32,7 @@ router.post('/send-otp', async (req, res) => {
   // Deliver real live OTP email via Nodemailer/SMTP
   const emailRes = await Promise.race([
     sendRealEmailOTP(email, generatedOtp),
-    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'Delivery timeout' }), 4000))
+    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'SMTP handshake timeout (>15s)' }), 15000))
   ]);
 
   res.json({
@@ -85,7 +85,7 @@ router.post('/send-mobile-otp', async (req, res) => {
   // Deliver real SMS/WhatsApp OTP
   const smsRes = await Promise.race([
     sendRealSmsOTP(cleanPhone, generatedOtp),
-    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'Delivery timeout' }), 4000))
+    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'Fast2SMS gateway timeout (>15s)' }), 15000))
   ]);
 
   res.json({

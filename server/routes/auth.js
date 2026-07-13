@@ -29,8 +29,11 @@ router.post('/send-otp', async (req, res) => {
     expires: Date.now() + 10 * 60 * 1000
   };
   
-  // Deliver real live OTP email via Nodemailer/SMTP
-  await sendRealEmailOTP(email, generatedOtp);
+  // Deliver real live OTP email via Nodemailer/SMTP without blocking UI
+  await Promise.race([
+    sendRealEmailOTP(email, generatedOtp),
+    new Promise((resolve) => setTimeout(resolve, 3500))
+  ]);
 
   res.json({
     success: true,
@@ -78,8 +81,11 @@ router.post('/send-mobile-otp', async (req, res) => {
     expires: Date.now() + 10 * 60 * 1000
   };
   
-  // Deliver real SMS OTP
-  await sendRealSmsOTP(cleanPhone, generatedOtp);
+  // Deliver real SMS/WhatsApp OTP without blocking UI
+  await Promise.race([
+    sendRealSmsOTP(cleanPhone, generatedOtp),
+    new Promise((resolve) => setTimeout(resolve, 3500))
+  ]);
 
   res.json({
     success: true,

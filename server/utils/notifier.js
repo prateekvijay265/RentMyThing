@@ -20,7 +20,10 @@ async function sendRealEmailOTP(recipientEmail, otpCode) {
       host,
       port,
       secure,
-      auth: { user, pass }
+      auth: { user, pass },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 5000
     });
 
     const htmlContent = `

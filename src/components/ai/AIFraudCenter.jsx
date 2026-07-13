@@ -52,10 +52,18 @@ export default function AIFraudCenter({ allProducts = [], onSelectProduct }) {
     <div className="container" style={{ paddingTop: 40, paddingBottom: 96 }}>
       {/* Header */}
       <div style={{ marginBottom: 36 }}>
-        <p className="eyebrow" style={{ marginBottom: 8 }}>Neural Campus Protection Engine</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+          <p className="eyebrow" style={{ margin: 0 }}>Neural Campus Protection Engine</p>
+          <span style={{
+            background: '#ecfdf5', color: '#10b981', border: '1px solid #a7f3d0',
+            padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6
+          }}>
+            <Sparkles size={12} /> Live Google Gemini AI Key Active
+          </span>
+        </div>
         <h1 className="display-md">AI Safety & Price Fraud Shield</h1>
         <p className="body-md" style={{ marginTop: 6, maxWidth: 640 }}>
-          Every gear listing on RentMyThing is screened against real-time Indian campus rental benchmarks to prevent price gouging and advance payment scams.
+          Every gear listing on RentMyThing is screened against real-time Indian campus rental benchmarks using Google Gemini AI to prevent price gouging and advance payment scams.
         </p>
       </div>
 

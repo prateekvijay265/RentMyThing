@@ -81,26 +81,29 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
 
           {/* Desktop Nav */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="hidden-mobile">
-            {navItems.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => go(id)}
-                style={{
-                  background: currentView === id ? 'var(--surface-2)' : 'transparent',
-                  color: currentView === id ? 'var(--coral)' : 'var(--ink-soft)',
-                  border: 'none',
-                  padding: '8px 14px',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: currentView === id ? 600 : 500,
-                  fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s',
-                  borderRadius: 8,
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            {navItems.map(({ id, label }) => {
+              const isActive = currentView === id || (id === 'ai' && currentView === 'aifraud');
+              return (
+                <button
+                  key={id}
+                  onClick={() => go(id)}
+                  style={{
+                    background: isActive ? 'var(--surface-2)' : 'transparent',
+                    color: isActive ? 'var(--coral)' : 'var(--ink-soft)',
+                    border: 'none',
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    fontWeight: isActive ? 600 : 500,
+                    fontFamily: "'Inter', sans-serif",
+                    transition: 'all 0.2s',
+                    borderRadius: 8,
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Right Actions */}

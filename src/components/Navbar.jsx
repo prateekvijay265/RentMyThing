@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogOut, Plus, Menu, X } from 'lucide-react';
+import { ShieldCheck, LogOut, Plus, Menu, X, User, LayoutDashboard, ChevronDown } from 'lucide-react';
 
 export default function Navbar({ currentView, onViewChange, user, onOpenAuthModal, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const navItems = [
     { id: 'home', label: 'Explore' },
@@ -15,12 +16,14 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
   const go = (id) => {
     onViewChange(id);
     setMobileOpen(false);
+    setProfileDropdownOpen(false);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('rt_user');
     localStorage.removeItem('rt_token');
     onLogout?.();
+    setProfileDropdownOpen(false);
     go('home');
   };
 
@@ -96,20 +99,20 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
           </nav>
 
           {/* Right Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, position: 'relative' }}>
             <button onClick={() => go('list')} className="btn btn-primary btn-sm hidden-mobile">
               <Plus size={14} />
               List Gear
             </button>
 
             {user ? (
-              <>
+              <div style={{ position: 'relative' }}>
                 <button
-                  onClick={() => go('dashboard')}
-                  title="Dashboard"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  title="Profile menu"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '6px 14px 6px 6px',
+                    padding: '6px 12px 6px 6px',
                     borderRadius: 100,
                     border: '1.5px solid var(--border)',
                     background: 'var(--surface)',
@@ -132,19 +135,58 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontFamily: "'Inter', sans-serif" }}>
                     {user.name?.split(' ')[0]}
                   </span>
+                  <ChevronDown size={14} color="var(--ink-muted)" />
                 </button>
 
-                {/* Explicit Desktop Log Out Button */}
-                <button
-                  onClick={handleLogout}
-                  title="Sign out of account"
-                  className="btn btn-secondary btn-sm hidden-mobile"
-                  style={{ padding: '7px 12px', color: '#dc2626', borderColor: '#fca5a5' }}
-                >
-                  <LogOut size={14} />
-                  <span>Log Out</span>
-                </button>
-              </>
+                {/* Profile Section Dropdown (contains Dashboard and Log Out) */}
+                {profileDropdownOpen && (
+                  <div className="card anim-in" style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: 220,
+                    padding: 8,
+                    background: 'var(--surface)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+                    zIndex: 1000,
+                  }}>
+                    <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{user.name}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--ink-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</p>
+                    </div>
+
+                    <button
+                      onClick={() => go('dashboard')}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+                        textAlign: 'left', cursor: 'pointer', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        color: 'var(--ink)'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <LayoutDashboard size={16} color="var(--coral)" />
+                      <span>My Profile & Dashboard</span>
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        width: '100%', padding: '10px 12px', border: 'none', background: 'none',
+                        textAlign: 'left', cursor: 'pointer', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        color: '#dc2626'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <LogOut size={16} />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <button onClick={onOpenAuthModal} className="btn btn-secondary btn-sm hidden-mobile">
                 Sign In
@@ -215,7 +257,7 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
                   className="btn btn-secondary"
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
-                  Dashboard ({user.name})
+                  My Profile & Dashboard ({user.name})
                 </button>
                 <button
                   onClick={handleLogout}

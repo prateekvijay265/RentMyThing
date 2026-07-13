@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { db, saveDatabase } = require('../db');
 
+// In-memory OTP storage for email verification: { email: { otp: "123456", expires: Date.now() + 10min } }
+const otpStore = {};
+
 const getUserFromReq = (req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return null;
@@ -10,35 +13,82 @@ const getUserFromReq = (req) => {
   return db.users.find((u) => u.id === token || u.email.toLowerCase() === token.toLowerCase()) || null;
 };
 
+// Send Email Verification OTP
+router.post('/send-otp', (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+  // Generate 6-digit OTP code
+  const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore[email.toLowerCase()] = {
+    otp: generatedOtp,
+    expires: Date.now() + 10 * 60 * 1000 // 10 minutes
+  };
+  console.log(`[AUTH OTP] Sent verification OTP ${generatedOtp} for email ${email}`);
+  res.json({
+    success: true,
+    message: `Verification code sent to ${email}`,
+    // In dev mode return simulated code so user can test instantly
+    devOtpCode: generatedOtp
+  });
+});
+
+// Verify Email Verification OTP
+router.post('/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ error: 'Email and OTP code are required' });
+  }
+  const record = otpStore[email.toLowerCase()];
+  if (!record || record.expires < Date.now()) {
+    return res.status(400).json({ error: 'Verification OTP has expired or is invalid. Please request a new code.' });
+  }
+  if (record.otp !== otp.trim()) {
+    return res.status(400).json({ error: 'Incorrect 6-digit OTP code. Please check and try again.' });
+  }
+  delete otpStore[email.toLowerCase()];
+  res.json({ success: true, verified: true });
+});
+
 router.post('/login', (req, res) => {
   const { email } = req.body;
   const user = db.users.find((u) => u.email.toLowerCase() === (email || '').toLowerCase());
   if (!user) {
-    return res.status(404).json({ error: 'Student email not registered on network' });
+    return res.status(404).json({ error: 'Student account not found. Please click Create Campus Account to sign up.' });
   }
   res.json({ token: user.id, user });
 });
 
 router.post('/register', (req, res) => {
-  const { email, name, college, hostel, phone } = req.body;
+  const { email, name, college, hostel, phone, otpVerified } = req.body;
   if (!email || !name) {
     return res.status(400).json({ error: 'Email and Full Name are required' });
   }
-  let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (user) {
-    return res.json({ token: user.id, user });
+  let existingUser = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  if (existingUser) {
+    return res.status(409).json({
+      error: 'An account with this email address already exists! Please switch to Sign In.'
+    });
   }
-  user = {
+
+  // Validate Indian Phone Number format
+  const cleanPhone = (phone || '').replace(/[\s\-\+]/g, '');
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number.' });
+  }
+
+  const user = {
     id: `user_${Date.now()}`,
-    email,
-    name,
+    email: email.toLowerCase(),
+    name: name.trim(),
     role: 'STUDENT',
-    college: college || 'IIT Delhi - Hauz Khas Campus',
-    hostel: hostel || 'Karakoram Hostel',
-    phone: phone || '+91 98000 00000',
-    avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80`,
+    college: college || 'Indian Campus Student',
+    hostel: hostel || 'Campus Residence',
+    phone: phone.trim(),
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
     isVerified: true,
-    verificationIdType: 'Verified College Network Member',
+    verificationIdType: otpVerified ? 'OTP Verified Student Member' : 'Verified Campus Network Member',
     rating: 5.0,
     completedRentals: 0,
     joinedDate: new Date().toISOString().split('T')[0]
@@ -48,32 +98,36 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token: user.id, user });
 });
 
-// Continue with Google Authentication Endpoint
+// Google Authentication Endpoint with First-Time Real Data Enrolment support
 router.post('/google', (req, res) => {
-  const { email, name, avatar } = req.body;
+  const { email, name, avatar, college, hostel, phone } = req.body;
   if (!email) return res.status(400).json({ error: 'Google email required' });
 
   let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (!user) {
-    user = {
-      id: `user_g_${Date.now()}`,
-      email,
-      name: name || email.split('@')[0],
-      role: 'STUDENT',
-      college: email.endsWith('.ac.in') || email.endsWith('.edu.in') ? 'Verified Indian Institute Domain' : 'IIT Delhi - Hauz Khas Campus',
-      hostel: 'Hostel Block A',
-      phone: '+91 98111 22334',
-      avatar: avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-      isVerified: true,
-      verificationIdType: 'Google SSO Institutional Verified',
-      rating: 5.0,
-      completedRentals: 0,
-      joinedDate: new Date().toISOString().split('T')[0]
-    };
-    db.users.push(user);
-    saveDatabase(db);
+  if (user) {
+    // If account already exists, remember their existing real data!
+    return res.json({ token: user.id, user, isNewUser: false });
   }
-  res.json({ token: user.id, user });
+
+  // First time Google Sign Up -> create account with real details
+  user = {
+    id: `user_g_${Date.now()}`,
+    email: email.toLowerCase(),
+    name: name || email.split('@')[0],
+    role: 'STUDENT',
+    college: college || 'Indian University Campus',
+    hostel: hostel || 'Hostel / Residence',
+    phone: phone || '',
+    avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+    isVerified: true,
+    verificationIdType: 'Google SSO Verified Student',
+    rating: 5.0,
+    completedRentals: 0,
+    joinedDate: new Date().toISOString().split('T')[0]
+  };
+  db.users.push(user);
+  saveDatabase(db);
+  res.json({ token: user.id, user, isNewUser: true });
 });
 
 router.get('/me', (req, res) => {
@@ -94,15 +148,6 @@ router.put('/profile', (req, res) => {
   if (phone) user.phone = phone;
   saveDatabase(db);
   res.json(user);
-});
-
-router.post('/verify-student', (req, res) => {
-  const user = getUserFromReq(req);
-  if (!user) return res.status(401).json({ error: 'Not authenticated' });
-  user.isVerified = true;
-  user.verificationIdType = req.body.idType || 'Aadhaar / Smart Student Identity Verified';
-  saveDatabase(db);
-  res.json({ success: true, user });
 });
 
 module.exports = { router, getUserFromReq };

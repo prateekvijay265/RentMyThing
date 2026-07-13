@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldAlert, Sparkles, PlusCircle } from 'lucide-react';
+import { X, ShieldAlert, Sparkles, PlusCircle, Upload, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
 
 const SUGGESTED_CATEGORIES = [
@@ -31,6 +31,16 @@ export default function ListingModal({ onClose, onSuccess }) {
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80');
   const [loading, setLoading] = useState(false);
   const [aiPriceHint, setAiPriceHint] = useState(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImageUrl(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handlePriceCheck = () => {
     const val = Number(rentPricePerDay);
@@ -173,16 +183,45 @@ export default function ListingModal({ onClose, onSuccess }) {
             />
           </div>
 
+          {/* Native Image Upload & Preview */}
           <div>
-            <label className="label" style={{ display: 'block', marginBottom: 6 }}>Image URL</label>
-            <input
-              type="url"
-              required
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="input"
-            />
+            <label className="label" style={{ display: 'block', marginBottom: 6 }}>Upload Gear Photo</label>
+            <div style={{
+              border: '2px dashed var(--border)',
+              borderRadius: 12,
+              padding: 16,
+              textAlign: 'center',
+              background: 'var(--surface-2)',
+              cursor: 'pointer',
+              position: 'relative'
+            }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                style={{
+                  position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%'
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <Upload size={24} color="var(--coral)" />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+                  Click to Upload Image from Phone / Laptop
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--ink-muted)' }}>
+                  PNG, JPG, WEBP supported
+                </span>
+              </div>
+            </div>
+
+            {imageUrl && (
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-2)', padding: 8, borderRadius: 10 }}>
+                <img src={imageUrl} alt="Preview" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                <span style={{ fontSize: 12, color: 'var(--ink-soft)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  ✓ Image loaded and ready
+                </span>
+              </div>
+            )}
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8, padding: 14 }}>

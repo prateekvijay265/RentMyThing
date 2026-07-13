@@ -17,6 +17,8 @@ export default function ChatModal({ user, recipient, recipientId, recipientName,
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sendError, setSendError] = useState('');
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
 
   const loadMessages = useCallback(async () => {
@@ -42,13 +44,17 @@ export default function ChatModal({ user, recipient, recipientId, recipientName,
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || sending) return;
+    setSendError('');
+    setSending(true);
     try {
-      await api.sendMessage(peer.id, inputText);
+      await api.sendMessage(peer.id, inputText.trim());
       setInputText('');
       loadMessages();
     } catch (err) {
-      alert('Send failed: ' + err.message);
+      setSendError(err.message || 'Failed to send. Try again.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -137,18 +143,33 @@ export default function ChatModal({ user, recipient, recipientId, recipientName,
         </div>
 
         {/* Input bar */}
-        <form onSubmit={handleSend} style={{ padding: '14px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-          <input
-            type="text"
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            placeholder="Write message to student host..."
-            className="input"
-            style={{ flex: 1 }}
-          />
-          <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '10px 16px' }}>
-            <Send size={14} />
-          </button>
+        <form onSubmit={handleSend} style={{ padding: '14px 16px', borderTop: '1px solid var(--border)' }}>
+          {sendError && (
+            <div style={{
+              fontSize: 12, color: 'var(--coral)', background: 'var(--coral-light)',
+              padding: '6px 12px', borderRadius: 8, marginBottom: 8
+            }}>
+              ⚠️ {sendError}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              placeholder="Write message to student host..."
+              className="input"
+              style={{ flex: 1 }}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm"
+              style={{ padding: '10px 16px', opacity: sending ? 0.6 : 1 }}
+              disabled={sending}
+            >
+              <Send size={14} />
+            </button>
+          </div>
         </form>
       </div>
     </div>

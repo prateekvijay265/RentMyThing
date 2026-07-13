@@ -207,16 +207,17 @@ export const api = {
     return handleResponse(res);
   },
 
-  async getMessages() {
-    const res = await fetch(`${API_BASE}/messages`, { headers: getAuthHeaders() });
+  async getMessages(peerId) {
+    const query = peerId ? `?peerId=${encodeURIComponent(peerId)}` : '';
+    const res = await fetch(`${API_BASE}/messages${query}`, { headers: getAuthHeaders() });
     return handleResponse(res);
   },
 
-  async sendMessage(data) {
+  async sendMessage(recipientId, text) {
     const res = await fetch(`${API_BASE}/messages`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(data)
+      body: JSON.stringify({ recipientId, text })
     });
     return handleResponse(res);
   },

@@ -27,21 +27,34 @@ router.post('/wishlist/toggle', (req, res) => {
 });
 
 router.get('/messages', (req, res) => {
-  res.json(db.messages);
+  const user = getUserFromReq(req);
+  const { peerId } = req.query;
+  let msgs = db.messages || [];
+  if (user && peerId) {
+    msgs = msgs.filter(m =>
+      (m.senderId === user.id && m.recipientId === peerId) ||
+      (m.senderId === peerId && m.recipientId === user.id)
+    );
+  } else if (peerId) {
+    // Demo/unauthenticated — return canned messages for any peer
+    msgs = db.messages.filter(m => m.recipientId === peerId || m.senderId === peerId).slice(0, 10);
+  }
+  res.json(msgs);
 });
 
 router.post('/messages', (req, res) => {
   const user = getUserFromReq(req);
-  if (!user) return res.status(401).json({ error: 'Not authenticated' });
   const { recipientId, text } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Message text required' });
   const newMsg = {
     id: `msg_${Date.now()}`,
-    senderId: user.id,
-    senderName: user.name,
-    recipientId,
-    text,
+    senderId: user ? user.id : 'guest',
+    senderName: user ? user.name : 'You',
+    recipientId: recipientId || 'peer',
+    text: text.trim(),
     createdAt: new Date().toISOString()
   };
+  if (!db.messages) db.messages = [];
   db.messages.push(newMsg);
   saveDatabase(db);
   res.status(201).json(newMsg);

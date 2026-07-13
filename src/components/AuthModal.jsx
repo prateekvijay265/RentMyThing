@@ -304,14 +304,20 @@ export default function AuthModal({ onClose, onSuccess }) {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 14,
-            background: 'var(--coral-light)', color: 'var(--coral)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px', border: '1px solid var(--coral-mid)',
-          }}>
-            <ShieldCheck size={24} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="RentMyThing Logo"
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 16,
+              objectFit: 'cover',
+              margin: '0 auto 14px',
+              display: 'block',
+              boxShadow: '0 6px 18px rgba(234, 88, 12, 0.35)',
+              border: '2px solid rgba(234, 88, 12, 0.25)',
+            }}
+          />
           <h2 style={{ fontSize: 24, marginBottom: 6 }}>
             {googleCompletionStep
               ? 'Complete Your Student Profile'

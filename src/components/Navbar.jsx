@@ -48,14 +48,19 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
             onClick={() => go('home')}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
           >
-            <div style={{
-              width: 38, height: 38, borderRadius: 12,
-              background: 'var(--coral)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', boxShadow: '0 2px 8px rgba(235,94,40,0.25)',
-            }}>
-              <ShieldCheck size={20} />
-            </div>
+            <img
+              src="/logo.png"
+              alt="RentMyThing Logo"
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                objectFit: 'cover',
+                boxShadow: '0 4px 14px rgba(234, 88, 12, 0.35)',
+                border: '1.5px solid rgba(234, 88, 12, 0.2)',
+                transition: 'transform 0.2s ease',
+              }}
+            />
             <div>
               <span style={{
                 fontFamily: "'Fraunces', serif",

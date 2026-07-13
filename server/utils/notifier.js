@@ -1,5 +1,3 @@
-const nodemailer = require('nodemailer');
-
 /**
  * Sends a real live email OTP using Nodemailer & SMTP (Gmail App Password, Brevo, SendGrid, Outlook, etc.)
  */
@@ -17,6 +15,7 @@ async function sendRealEmailOTP(recipientEmail, otpCode) {
   }
 
   try {
+    const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
       host,
       port,

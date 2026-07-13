@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, ArrowRight, Key, MapPin, CheckCircle, ShieldAlert, Mail } from 'lucide-react';
+import { X, ShieldCheck, ArrowRight, Key, MapPin, CheckCircle, ShieldAlert, Mail, Save } from 'lucide-react';
 import { api } from '../api';
 import { getGoogleClientId, saveGoogleClientId, triggerGoogleSignIn } from '../googleAuth';
 
@@ -22,6 +22,10 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [otpStep, setOtpStep] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [devOtpHint, setDevOtpHint] = useState('');
+
+  // Google Sign-In Profile Completion Step state (when user signs in with Google first time or missing details)
+  const [googleCompletionStep, setGoogleCompletionStep] = useState(false);
+  const [googleUserTemp, setGoogleUserTemp] = useState(null);
 
   // Client ID Setup / Smart Google Profile Chooser state
   const [showGoogleChooserModal, setShowGoogleChooserModal] = useState(false);
@@ -106,10 +110,9 @@ export default function AuthModal({ onClose, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    // Validate Indian Phone Number
     const cleanPhone = phone.replace(/[\s\-\+]/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
-      setError('Please enter a real 10-digit Indian mobile number (+91).');
+      setError('Please enter a valid 10-digit mobile number.');
       setLoading(false);
       return;
     }
@@ -172,14 +175,56 @@ export default function AuthModal({ onClose, onSuccess }) {
         name: googleUser.name,
         avatar: googleUser.picture || googleUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${googleUser.email}`,
         googleId: googleUser.sub || googleUser.email,
-        college: college || 'Indian Campus Student',
-        hostel: hostel || 'Hostel / Residence',
-        phone: phone || '+91 98000 00000',
       });
+
+      // If Google sign-in detected missing details or first-time login, ask for College & Phone before finishing!
+      if (res.needsCompletion || !res.user.college || !res.user.phone) {
+        setGoogleUserTemp(res.user);
+        setCollege(res.user.college || '');
+        setHostel(res.user.hostel || '');
+        setPhone(res.user.phone || '');
+        setGoogleCompletionStep(true);
+        setGoogleLoading(false);
+        return;
+      }
+
       onSuccess(res.user);
     } catch (err) {
       setError('Google sign-in failed: ' + err.message);
       setGoogleLoading(false);
+    }
+  };
+
+  const handleSaveGoogleCompletion = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    const cleanPhone = phone.replace(/[\s\-\+]/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setError('Please enter a valid 10-digit mobile number.');
+      setLoading(false);
+      return;
+    }
+    if (!college.trim()) {
+      setError('Please enter your College or University name.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Save details persistently
+      const updatedUser = {
+        ...googleUserTemp,
+        college: college.trim(),
+        hostel: hostel.trim(),
+        phone: phone.trim(),
+      };
+      localStorage.setItem('rt_user', JSON.stringify(updatedUser));
+      onSuccess(updatedUser);
+    } catch (err) {
+      setError(err.message || 'Failed to save campus details.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -247,35 +292,20 @@ export default function AuthModal({ onClose, onSuccess }) {
           }}>
             <ShieldCheck size={24} />
           </div>
-          <h2 style={{ fontSize: 24, marginBottom: 6 }}>{isLogin ? 'Sign In to Campus' : 'Real Campus Verification'}</h2>
+          <h2 style={{ fontSize: 24, marginBottom: 6 }}>
+            {googleCompletionStep
+              ? 'Complete Your Student Profile'
+              : isLogin
+              ? 'Sign In to Campus'
+              : 'Create Campus Account'}
+          </h2>
           <p className="body-sm">
-            {isLogin ? 'Welcome back! Sign in to continue.' : 'We verify all students ONCE at signup so identity is never faked.'}
+            {googleCompletionStep
+              ? 'Please provide your campus & mobile number once to finish registration.'
+              : isLogin
+              ? 'Welcome back! Sign in to continue.'
+              : 'We verify all students ONCE at signup so identity is never faked.'}
           </p>
-        </div>
-
-        {/* Google Sign-In Button */}
-        <div style={{ marginBottom: 20 }}>
-          <button
-            onClick={handleGoogleClick}
-            disabled={googleLoading}
-            type="button"
-            className="btn btn-secondary"
-            style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            <span>{googleLoading ? 'Connecting Google Account...' : 'Sign in with Google'}</span>
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          <span className="label" style={{ fontSize: 10 }}>or institutional email</span>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
         {error && (
@@ -294,56 +324,16 @@ export default function AuthModal({ onClose, onSuccess }) {
           </div>
         )}
 
-        {isLogin ? (
-          /* LOGIN FORM */
-          <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 4 }}>Registered Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="student@iitd.ac.in or gmail.com"
-                className="input"
-              />
-            </div>
-
-            <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-              <span>{loading ? 'Signing In...' : 'Sign In to Marketplace'}</span>
-              {!loading && <ArrowRight size={15} />}
-            </button>
-          </form>
-        ) : !otpStep ? (
-          /* REGISTRATION STEP 1: REAL USER DETAILS */
-          <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 4 }}>Real Email Address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@college.ac.in or @gmail.com"
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 4 }}>Real Full Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Enter your real full legal/student name"
-                className="input"
-              />
+        {googleCompletionStep ? (
+          /* GOOGLE SIGN-IN PROFILE COMPLETION STEP */
+          <form onSubmit={handleSaveGoogleCompletion} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'var(--surface-2)', padding: 12, borderRadius: 10, fontSize: 13, color: 'var(--ink)' }}>
+              <strong>Google Account:</strong> {googleUserTemp?.email}
             </div>
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <label className="label">Real College / University in India</label>
+                <label className="label">College / University</label>
                 <button
                   type="button"
                   onClick={handleAutoDetectLocation}
@@ -363,8 +353,9 @@ export default function AuthModal({ onClose, onSuccess }) {
                 required
                 value={college}
                 onChange={e => setCollege(e.target.value)}
-                placeholder="Type ANY Indian College or University name..."
+                placeholder="Type your College or University name..."
                 className="input"
+                autoComplete="organization"
               />
               <datalist id="indian-campuses-datalist">
                 {indianCampusesList.map(c => <option key={c} value={c} />)}
@@ -373,34 +364,201 @@ export default function AuthModal({ onClose, onSuccess }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Hostel / Area</label>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Hostel & Room</label>
                 <input
                   type="text"
                   required
                   value={hostel}
                   onChange={e => setHostel(e.target.value)}
-                  placeholder="e.g. Block A, Rm 104"
+                  placeholder="Hostel Block, Room"
                   className="input"
+                  autoComplete="address-line1"
                 />
               </div>
               <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Real 10-Digit Mobile</label>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Mobile Number (10 Digits)</label>
                 <input
                   type="text"
                   required
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
+                  placeholder="9876543210"
                   className="input"
+                  autoComplete="tel"
                 />
               </div>
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-              <span>{loading ? 'Sending OTP...' : 'Next: Send Verification Code'}</span>
-              {!loading && <ArrowRight size={15} />}
+              <Save size={16} />
+              <span>{loading ? 'Saving Profile...' : 'Save & Complete Registration'}</span>
             </button>
           </form>
+        ) : isLogin ? (
+          /* LOGIN FORM */
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <button
+                onClick={handleGoogleClick}
+                disabled={googleLoading}
+                type="button"
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>{googleLoading ? 'Connecting Google Account...' : 'Sign in with Google'}</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span className="label" style={{ fontSize: 10 }}>or email address</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@college.ac.in or gmail.com"
+                  className="input"
+                  autoComplete="email"
+                />
+              </div>
+
+              <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+                <span>{loading ? 'Signing In...' : 'Sign In to Marketplace'}</span>
+                {!loading && <ArrowRight size={15} />}
+              </button>
+            </form>
+          </>
+        ) : !otpStep ? (
+          /* REGISTRATION STEP 1: CLEAN USER DETAILS */
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <button
+                onClick={handleGoogleClick}
+                disabled={googleLoading}
+                type="button"
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>{googleLoading ? 'Connecting Google Account...' : 'Sign up with Google'}</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '18px 0' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span className="label" style={{ fontSize: 10 }}>or email address</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+
+            <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="you@college.ac.in or gmail.com"
+                  className="input"
+                  autoComplete="email"
+                />
+              </div>
+
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="input"
+                  autoComplete="name"
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="label">College / University</label>
+                  <button
+                    type="button"
+                    onClick={handleAutoDetectLocation}
+                    disabled={detectingLoc}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--coral)', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4
+                    }}
+                  >
+                    <MapPin size={14} />
+                    <span>{detectingLoc ? 'Detecting Campus...' : 'Auto-Detect My Campus'}</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  list="indian-campuses-datalist"
+                  required
+                  value={college}
+                  onChange={e => setCollege(e.target.value)}
+                  placeholder="Type your College or University name..."
+                  className="input"
+                  autoComplete="organization"
+                />
+                <datalist id="indian-campuses-datalist">
+                  {indianCampusesList.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Hostel & Room</label>
+                  <input
+                    type="text"
+                    required
+                    value={hostel}
+                    onChange={e => setHostel(e.target.value)}
+                    placeholder="Hostel Block, Room"
+                    className="input"
+                    autoComplete="address-line1"
+                  />
+                </div>
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 4 }}>Mobile Number (10 Digits)</label>
+                  <input
+                    type="text"
+                    required
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="9876543210"
+                    className="input"
+                    autoComplete="tel"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+                <span>{loading ? 'Sending OTP...' : 'Next: Send Verification Code'}</span>
+                {!loading && <ArrowRight size={15} />}
+              </button>
+            </form>
+          </>
         ) : (
           /* REGISTRATION STEP 2: EMAIL OTP VERIFICATION */
           <form onSubmit={handleVerifyOtpAndRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -455,6 +613,7 @@ export default function AuthModal({ onClose, onSuccess }) {
               setError('');
               setLocSuccessMessage('');
               setOtpStep(false);
+              setGoogleCompletionStep(false);
             }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--coral)' }}
           >
@@ -514,7 +673,7 @@ export default function AuthModal({ onClose, onSuccess }) {
             </div>
 
             <p className="body-sm" style={{ marginBottom: 16 }}>
-              Enter your Google or institutional email to sign in instantly with Google profile verification:
+              Enter your Google or institutional email to sign in instantly:
             </p>
 
             <form onSubmit={handleSmartGoogleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -527,17 +686,19 @@ export default function AuthModal({ onClose, onSuccess }) {
                   onChange={e => setCustomGoogleEmail(e.target.value)}
                   placeholder="yourname@gmail.com or @iitd.ac.in"
                   className="input"
+                  autoComplete="email"
                 />
               </div>
 
               <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Your Full Name</label>
+                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Full Name</label>
                 <input
                   type="text"
                   value={customGoogleName}
                   onChange={e => setCustomGoogleName(e.target.value)}
                   placeholder="Prateek Vijay"
                   className="input"
+                  autoComplete="name"
                 />
               </div>
 

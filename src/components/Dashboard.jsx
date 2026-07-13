@@ -276,7 +276,7 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <Edit3 size={14} />
-                  <span>Update Real Details</span>
+                  <span>Update Details</span>
                 </button>
               )}
             </div>
@@ -284,12 +284,12 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
             {isEditingVerification ? (
               <form onSubmit={handleSaveVerification} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Registered Email (Verified)</label>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Registered Email</label>
                   <input type="text" disabled value={user.email} className="input" style={{ background: 'var(--surface-2)', color: 'var(--ink-muted)' }} />
                 </div>
 
                 <div>
-                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Your Real College or University in India</label>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>College / University</label>
                   <input
                     type="text"
                     required
@@ -313,13 +313,13 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
                 </div>
 
                 <div>
-                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Verified Indian Phone Number</label>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Mobile Number</label>
                   <input
                     type="text"
                     required
                     value={editPhone}
                     onChange={e => setEditPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
+                    placeholder="9876543210"
                     className="input"
                   />
                 </div>
@@ -329,7 +329,7 @@ export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdat
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
-                    <Save size={15} /> Save Real Details
+                    <Save size={15} /> Save Details
                   </button>
                 </div>
               </form>

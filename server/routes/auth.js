@@ -19,17 +19,15 @@ router.post('/send-otp', (req, res) => {
   if (!email) {
     return res.status(400).json({ error: 'Email address is required' });
   }
-  // Generate 6-digit OTP code
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore[email.toLowerCase()] = {
     otp: generatedOtp,
-    expires: Date.now() + 10 * 60 * 1000 // 10 minutes
+    expires: Date.now() + 10 * 60 * 1000
   };
   console.log(`[AUTH OTP] Sent verification OTP ${generatedOtp} for email ${email}`);
   res.json({
     success: true,
     message: `Verification code sent to ${email}`,
-    // In dev mode return simulated code so user can test instantly
     devOtpCode: generatedOtp
   });
 });
@@ -72,10 +70,9 @@ router.post('/register', (req, res) => {
     });
   }
 
-  // Validate Indian Phone Number format
   const cleanPhone = (phone || '').replace(/[\s\-\+]/g, '');
   if (!cleanPhone || cleanPhone.length < 10) {
-    return res.status(400).json({ error: 'Please enter a valid 10-digit Indian phone number.' });
+    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
   }
 
   const user = {
@@ -83,8 +80,8 @@ router.post('/register', (req, res) => {
     email: email.toLowerCase(),
     name: name.trim(),
     role: 'STUDENT',
-    college: college || 'Indian Campus Student',
-    hostel: hostel || 'Campus Residence',
+    college: college || 'Campus Student',
+    hostel: hostel || 'Hostel Room',
     phone: phone.trim(),
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
     isVerified: true,
@@ -98,25 +95,35 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token: user.id, user });
 });
 
-// Google Authentication Endpoint with First-Time Real Data Enrolment support
+// Google Authentication Endpoint with Profile Completion Detection
 router.post('/google', (req, res) => {
   const { email, name, avatar, college, hostel, phone } = req.body;
   if (!email) return res.status(400).json({ error: 'Google email required' });
 
   let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
   if (user) {
-    // If account already exists, remember their existing real data!
-    return res.json({ token: user.id, user, isNewUser: false });
+    // Check if details are already filled (not placeholder or empty)
+    const hasDetails = user.college &&
+      user.phone &&
+      user.college !== 'Indian University Campus' &&
+      !user.hostel?.includes('Hostel / Residence') &&
+      !user.phone?.includes('00000');
+
+    return res.json({
+      token: user.id,
+      user,
+      needsCompletion: !hasDetails
+    });
   }
 
-  // First time Google Sign Up -> create account with real details
+  // First time Google Sign In -> Create initial record & require completion
   user = {
     id: `user_g_${Date.now()}`,
     email: email.toLowerCase(),
     name: name || email.split('@')[0],
     role: 'STUDENT',
-    college: college || 'Indian University Campus',
-    hostel: hostel || 'Hostel / Residence',
+    college: college || '',
+    hostel: hostel || '',
     phone: phone || '',
     avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
     isVerified: true,
@@ -127,7 +134,7 @@ router.post('/google', (req, res) => {
   };
   db.users.push(user);
   saveDatabase(db);
-  res.json({ token: user.id, user, isNewUser: true });
+  res.json({ token: user.id, user, needsCompletion: true });
 });
 
 router.get('/me', (req, res) => {

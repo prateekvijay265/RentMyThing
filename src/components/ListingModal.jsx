@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Plus, AlertCircle, CheckCircle, IndianRupee, ShieldCheck } from 'lucide-react';
+import { X, ShieldAlert, Sparkles, PlusCircle } from 'lucide-react';
 import { api } from '../api';
 
-const CATEGORIES = ['Electronics', 'Camera', 'Laptop', 'Cycle', 'Gaming', 'Projector', 'Sports', 'Musical Instruments', 'Books', 'Hostel Essentials', 'Tools', 'Fashion'];
+const SUGGESTED_CATEGORIES = [
+  'Camera & Optics',
+  'Electronics & Gadgets',
+  'Laptops & Tablets',
+  'Cycles & Scooters',
+  'Gaming Consoles & VR',
+  'Projectors & Audio',
+  'Sports Equipment',
+  'Musical Instruments',
+  'Academic Books & Notes',
+  'Hostel Essentials & Appliances',
+  'Tools & Hardware',
+  'Fashion & Ethnic Wear',
+  'Lab Equipment & Instruments',
+  'Art & Design Gear',
+  'Any Other Campus Gear',
+];
 
 export default function ListingModal({ onClose, onSuccess }) {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Camera');
+  const [category, setCategory] = useState('Camera & Optics');
+  const [customCategory, setCustomCategory] = useState('');
   const [rentPricePerDay, setRentPricePerDay] = useState('');
-  const [deposit, setDeposit] = useState('500');
+  const [deposit, setDeposit] = useState('');
   const [condition, setCondition] = useState('Like New');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80');
@@ -21,17 +38,18 @@ export default function ListingModal({ onClose, onSuccess }) {
     if (val > 1500) {
       setAiPriceHint({ status: 'warn', msg: '₹' + val + '/day is above Indian campus median. Lowering to ₹350–₹600 increases bookings 3x.' });
     } else {
-      setAiPriceHint({ status: 'ok', msg: '✓ Price is well within standard IIT/BITS campus benchmark range.' });
+      setAiPriceHint({ status: 'ok', msg: '✓ Price is well within standard Indian campus benchmark range.' });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const finalCat = category === 'Any Other Campus Gear' ? (customCategory.trim() || 'General Gear') : category;
     try {
       await api.createProduct({
         title,
-        category,
+        category: finalCat,
         rentPricePerDay: Number(rentPricePerDay),
         deposit: Number(deposit),
         condition,
@@ -63,8 +81,8 @@ export default function ListingModal({ onClose, onSuccess }) {
 
         <div style={{ marginBottom: 24 }}>
           <span className="eyebrow" style={{ color: 'var(--coral)' }}>Peer Marketplace</span>
-          <h2 style={{ fontSize: 24, marginTop: 4 }}>List Your Gear (₹ INR)</h2>
-          <p className="body-sm">Earn passive income from your unused campus gear. Protected by AI pricing shield.</p>
+          <h2 style={{ fontSize: 24, marginTop: 4 }}>List Any Gear or Item (₹ INR)</h2>
+          <p className="body-sm">You can list any item you own—cameras, books, appliances, lab gear, or custom items.</p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -75,7 +93,7 @@ export default function ListingModal({ onClose, onSuccess }) {
               required
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="e.g., Sony Alpha A6000 Camera + 50mm Lens"
+              placeholder="e.g., Casio Scientific Calculator or Induction Cooktop"
               className="input"
             />
           </div>
@@ -84,7 +102,7 @@ export default function ListingModal({ onClose, onSuccess }) {
             <div>
               <label className="label" style={{ display: 'block', marginBottom: 6 }}>Category</label>
               <select value={category} onChange={e => setCategory(e.target.value)} className="input" style={{ cursor: 'pointer' }}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
@@ -95,6 +113,20 @@ export default function ListingModal({ onClose, onSuccess }) {
             </div>
           </div>
 
+          {category === 'Any Other Campus Gear' && (
+            <div>
+              <label className="label" style={{ display: 'block', marginBottom: 6 }}>Enter Custom Category Name</label>
+              <input
+                type="text"
+                required
+                value={customCategory}
+                onChange={e => setCustomCategory(e.target.value)}
+                placeholder="e.g., Lab Instrument, Musical Gear, Costume..."
+                className="input"
+              />
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label className="label" style={{ display: 'block', marginBottom: 6 }}>Daily Rent (₹ INR)</label>
@@ -104,7 +136,7 @@ export default function ListingModal({ onClose, onSuccess }) {
                 value={rentPricePerDay}
                 onChange={e => setRentPricePerDay(e.target.value)}
                 onBlur={handlePriceCheck}
-                placeholder="400"
+                placeholder="100"
                 className="input"
               />
             </div>
@@ -115,7 +147,7 @@ export default function ListingModal({ onClose, onSuccess }) {
                 required
                 value={deposit}
                 onChange={e => setDeposit(e.target.value)}
-                placeholder="500"
+                placeholder="300"
                 className="input"
               />
             </div>
@@ -123,8 +155,8 @@ export default function ListingModal({ onClose, onSuccess }) {
 
           {aiPriceHint && (
             <div className={`badge ${aiPriceHint.status === 'ok' ? 'badge-green' : 'badge-amber'}`} style={{ padding: 12, borderRadius: 12, display: 'flex', gap: 8 }}>
-              <Sparkles size={14} flexShrink={0} />
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{aiPriceHint.msg}</span>
+              <Sparkles size={16} />
+              <span style={{ fontSize: 13 }}>{aiPriceHint.msg}</span>
             </div>
           )}
 
@@ -135,7 +167,7 @@ export default function ListingModal({ onClose, onSuccess }) {
               required
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Include details like charger, SD card, carry bag..."
+              placeholder="State what is included, any rules, and pickup location..."
               className="input"
               style={{ resize: 'vertical' }}
             />
@@ -153,9 +185,9 @@ export default function ListingModal({ onClose, onSuccess }) {
             />
           </div>
 
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-            <Plus size={16} />
-            <span>{loading ? 'Publishing...' : 'Publish Campus Listing'}</span>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8, padding: 14 }}>
+            <PlusCircle size={17} />
+            <span>{loading ? 'Listing Gear...' : 'Publish Campus Listing (₹)'}</span>
           </button>
         </form>
       </div>

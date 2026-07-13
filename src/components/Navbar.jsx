@@ -1,73 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Plus, LogOut, Menu, X, LayoutDashboard, Cpu, List, Compass, ClipboardList, ShieldCheck } from 'lucide-react';
-import Logo from './Logo';
+import React, { useState } from 'react';
+import { ShieldCheck, LogOut, Plus, Menu, X } from 'lucide-react';
 
-const LINKS = [
-  { id: 'home',     label: 'Home' },
-  { id: 'search',   label: 'Browse Gear' },
-  { id: 'map',      label: 'Campus Map' },
-  { id: 'aifraud',  label: 'AI Safety' },
-  { id: 'requests', label: 'Request Hub' },
-];
-
-export default function Navbar({ activeView, onViewChange, user, onOpenAuthModal }) {
-  const [scrolled, setScrolled] = useState(false);
+export default function Navbar({ currentView, onViewChange, user, onOpenAuthModal, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const navItems = [
+    { id: 'home', label: 'Explore' },
+    { id: 'search', label: 'Search Gear' },
+    { id: 'requests', label: 'Demand Hub' },
+    { id: 'map', label: 'Live Map' },
+    { id: 'ai', label: 'AI Safety Center' },
+  ];
 
-  // Close drawer on resize to desktop
-  useEffect(() => {
-    const onResize = () => { if (window.innerWidth >= 1024) setMobileOpen(false); };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
+  const go = (id) => {
+    onViewChange(id);
+    setMobileOpen(false);
+  };
 
-  const go = (id) => { onViewChange(id); setMobileOpen(false); };
-  const handleLogout = () => { localStorage.removeItem('rt_token'); window.location.reload(); };
+  const handleLogout = () => {
+    localStorage.removeItem('rt_user');
+    localStorage.removeItem('rt_token');
+    onLogout?.();
+    go('home');
+  };
 
   return (
     <>
       <header style={{
         position: 'sticky',
         top: 0,
-        zIndex: 100,
-        background: scrolled ? 'rgba(255,255,255,0.97)' : 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: `1px solid ${scrolled ? 'var(--border)' : 'transparent'}`,
-        boxShadow: scrolled ? 'var(--shadow-sm)' : 'none',
-        transition: 'all 0.25s ease',
+        zIndex: 900,
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid var(--border)',
       }}>
-        <div className="container" style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-
+        <div className="container" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 68,
+        }}>
           {/* Logo */}
-          <div onClick={() => go('home')}>
-            <Logo size="md" showTagline={false} />
+          <div
+            onClick={() => go('home')}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+          >
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: 'var(--coral)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', boxShadow: '0 2px 8px rgba(235,94,40,0.25)',
+            }}>
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <span style={{
+                fontFamily: "'Fraunces', serif",
+                fontSize: 20,
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: 'var(--ink)',
+                display: 'block',
+                lineHeight: 1.1,
+              }}>
+                RentMyThing
+              </span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Campus India
+              </span>
+            </div>
           </div>
 
           {/* Desktop Nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' }} className="hidden-mobile">
-            {LINKS.map(({ id, label }) => (
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="hidden-mobile">
+            {navItems.map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => go(id)}
-                className={`nav-link ${activeView === id ? 'active' : ''}`}
                 style={{
-                  background: 'none',
+                  background: currentView === id ? 'var(--surface-2)' : 'transparent',
+                  color: currentView === id ? 'var(--coral)' : 'var(--ink-soft)',
                   border: 'none',
                   padding: '8px 14px',
-                  fontSize: 13,
-                  fontWeight: activeView === id ? 700 : 500,
-                  color: activeView === id ? 'var(--coral)' : 'var(--ink-soft)',
                   cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: currentView === id ? 600 : 500,
                   fontFamily: "'Inter', sans-serif",
-                  letterSpacing: '-0.01em',
-                  transition: 'color 0.2s',
+                  transition: 'all 0.2s',
                   borderRadius: 8,
                 }}
               >
@@ -90,7 +109,7 @@ export default function Navbar({ activeView, onViewChange, user, onOpenAuthModal
                   title="Dashboard"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '6px 12px 6px 6px',
+                    padding: '6px 14px 6px 6px',
                     borderRadius: 100,
                     border: '1.5px solid var(--border)',
                     background: 'var(--surface)',
@@ -114,8 +133,16 @@ export default function Navbar({ activeView, onViewChange, user, onOpenAuthModal
                     {user.name?.split(' ')[0]}
                   </span>
                 </button>
-                <button onClick={handleLogout} title="Sign out" className="btn btn-ghost btn-sm hidden-mobile" style={{ padding: '8px 10px' }}>
+
+                {/* Explicit Desktop Log Out Button */}
+                <button
+                  onClick={handleLogout}
+                  title="Sign out of account"
+                  className="btn btn-secondary btn-sm hidden-mobile"
+                  style={{ padding: '7px 12px', color: '#dc2626', borderColor: '#fca5a5' }}
+                >
                   <LogOut size={14} />
+                  <span>Log Out</span>
                 </button>
               </>
             ) : (
@@ -145,50 +172,72 @@ export default function Navbar({ activeView, onViewChange, user, onOpenAuthModal
       {/* Mobile Drawer */}
       {mobileOpen && (
         <div style={{
-          position: 'fixed', top: 68, left: 0, right: 0, zIndex: 99,
+          position: 'fixed',
+          top: 68,
+          left: 0, right: 0,
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-lg)',
-          padding: '16px 24px 24px',
-          animation: 'slideDown 0.25s ease both',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {LINKS.map(({ id, label }) => (
-              <button key={id} onClick={() => go(id)} style={{
-                display: 'flex', alignItems: 'center',
-                padding: '12px 16px', borderRadius: 12, border: 'none',
-                background: activeView === id ? 'var(--coral-light)' : 'transparent',
-                color: activeView === id ? 'var(--coral)' : 'var(--ink-soft)',
-                fontSize: 14, fontWeight: activeView === id ? 700 : 500,
-                cursor: 'pointer', textAlign: 'left',
-                fontFamily: "'Inter', sans-serif",
-                transition: 'all 0.15s ease',
-              }}>
+          padding: '16px 20px 24px',
+          zIndex: 890,
+          boxShadow: 'var(--shadow-md)',
+        }} className="anim-in">
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {navItems.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => go(id)}
+                style={{
+                  background: currentView === id ? 'var(--surface-2)' : 'transparent',
+                  color: currentView === id ? 'var(--coral)' : 'var(--ink)',
+                  border: 'none',
+                  padding: '12px 14px',
+                  textAlign: 'left',
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: currentView === id ? 600 : 500,
+                  cursor: 'pointer',
+                }}
+              >
                 {label}
               </button>
             ))}
-            <div style={{ borderTop: '1px solid var(--border)', margin: '12px 0 8px' }} />
-            <button onClick={() => { go('list'); }} className="btn btn-primary" style={{ justifyContent: 'center' }}>
-              <Plus size={15} /> + List Gear (₹)
+          </nav>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button onClick={() => go('list')} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              <Plus size={15} />
+              List Gear
             </button>
-            {!user && (
-              <button onClick={() => { onOpenAuthModal(); setMobileOpen(false); }} className="btn btn-secondary" style={{ justifyContent: 'center' }}>
+            {user ? (
+              <>
+                <button
+                  onClick={() => go('dashboard')}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  Dashboard ({user.name})
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', color: '#dc2626', borderColor: '#fca5a5' }}
+                >
+                  <LogOut size={15} />
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => { setMobileOpen(false); onOpenAuthModal(); }}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
                 Sign In
               </button>
             )}
           </div>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 1023px) {
-          .hidden-mobile { display: none !important; }
-          .mobile-menu-btn { display: flex !important; }
-        }
-        @media (min-width: 1024px) {
-          .mobile-menu-btn { display: none !important; }
-        }
-      `}</style>
     </>
   );
 }

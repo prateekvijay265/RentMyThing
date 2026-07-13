@@ -1,38 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Package, ShoppingBag, Heart, User, ShieldCheck, Plus, CheckCircle, Clock, Key, Star, Calendar, MessageSquare, ArrowRight } from 'lucide-react';
-import ProductCard from './ProductCard';
-import ChatModal from './ChatModal';
+import { ShieldCheck, Plus, Package, Calendar, Heart, Shield, CheckCircle, Clock, Key, AlertCircle, Edit3, LogOut, Save } from 'lucide-react';
 import { api } from '../api';
+import ProductCard from './ProductCard';
 
 const TABS = [
-  { id: 'rentals', label: 'My Bookings', icon: ShoppingBag },
   { id: 'listings', label: 'My Gear Listings', icon: Package },
+  { id: 'bookings', label: 'My Rentals & Borrowed', icon: Calendar },
   { id: 'wishlist', label: 'Saved Wishlist', icon: Heart },
-  { id: 'profile', label: 'Campus Profile', icon: User },
+  { id: 'verification', label: 'Campus ID & Verification', icon: Shield },
 ];
 
-export default function Dashboard({ user, onRefreshUser, onSelectProduct, onViewChange }) {
-  const [activeTab, setActiveTab] = useState('rentals');
-  const [rentals, setRentals] = useState([]);
-  const [listings, setListings] = useState([]);
+export default function Dashboard({ user, onViewChange, onSelectProduct, onUpdateUser, onLogout }) {
+  const [activeTab, setActiveTab] = useState('listings');
+  const [myListings, setMyListings] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeChatRecipient, setActiveChatRecipient] = useState(null);
-  const [otpInput, setOtpInput] = useState('');
+
+  // OTP handover verification modal state
   const [otpBookingId, setOtpBookingId] = useState(null);
-  const [otpType, setOtpType] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [otpType, setOtpType] = useState('pickup');
+
+  // Real campus verification editing state
+  const [isEditingVerification, setIsEditingVerification] = useState(false);
+  const [editCollege, setEditCollege] = useState(user?.college || '');
+  const [editHostel, setEditHostel] = useState(user?.hostel || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      const [rData, lData, wData] = await Promise.all([
-        api.getMyRentals(),
-        api.getMyListings(),
-        api.getWishlist(),
+      const [productsRes, bookingsRes, wishlistRes] = await Promise.all([
+        api.getProducts().catch(() => ({ products: [] })),
+        api.getBookings().catch(() => ({ bookings: [] })),
+        api.getWishlist().catch(() => ({ wishlist: [] })),
       ]);
-      setRentals(rData || []);
-      setListings(lData || []);
-      setWishlist(wData || []);
+
+      const allProducts = productsRes.products || [];
+      const mine = allProducts.filter(p => p.ownerEmail === user.email || p.owner === user.name);
+      setMyListings(mine);
+
+      const allBookings = bookingsRes.bookings || [];
+      setMyBookings(allBookings.filter(b => b.borrowerEmail === user.email || b.ownerEmail === user.email));
+      setWishlist(wishlistRes.wishlist || []);
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -40,7 +53,29 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
     }
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => {
+    fetchData();
+    if (user) {
+      setEditCollege(user.college || '');
+      setEditHostel(user.hostel || '');
+      setEditPhone(user.phone || '');
+    }
+  }, [user]);
+
+  const handleSaveVerification = (e) => {
+    e.preventDefault();
+    const updatedUser = {
+      ...user,
+      college: editCollege.trim() || user.college,
+      hostel: editHostel.trim() || user.hostel,
+      phone: editPhone.trim() || user.phone,
+    };
+    localStorage.setItem('rt_user', JSON.stringify(updatedUser));
+    onUpdateUser?.(updatedUser);
+    setIsEditingVerification(false);
+    setSaveSuccessMsg('✓ Your real campus verification details were saved successfully!');
+    setTimeout(() => setSaveSuccessMsg(''), 4000);
+  };
 
   const handleVerifyOtp = async () => {
     if (!otpInput || !otpBookingId) return;
@@ -91,7 +126,7 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
                   </span>
                 </div>
                 <p className="body-md" style={{ marginTop: 4 }}>
-                  {user.college || 'IIT Delhi'} · {user.hostel || 'Hostel Room'}
+                  {user.college || 'Indian Campus Student'} · {user.hostel || 'Hostel Room'}
                 </p>
               </div>
             </div>
@@ -99,6 +134,18 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={() => onViewChange('list')} className="btn btn-primary">
                 <Plus size={15} /> List New Gear (₹)
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('rt_user');
+                  localStorage.removeItem('rt_token');
+                  onLogout?.();
+                  onViewChange('home');
+                }}
+                className="btn btn-secondary"
+                style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+              >
+                <LogOut size={15} /> Log Out
               </button>
             </div>
           </div>
@@ -109,90 +156,91 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`btn ${activeTab === id ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '10px 18px', fontSize: 13 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 18px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: activeTab === id ? 'var(--coral)' : 'transparent',
+                  color: activeTab === id ? '#fff' : 'var(--ink-soft)',
+                  fontWeight: activeTab === id ? 600 : 500,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                }}
               >
-                <Icon size={15} />
-                <span>{label}</span>
-                {id === 'rentals' && rentals.length > 0 && (
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 100,
-                    background: activeTab === id ? 'rgba(255,255,255,0.25)' : 'var(--surface-3)',
-                    fontSize: 11, fontWeight: 700
-                  }}>
-                    {rentals.length}
-                  </span>
-                )}
-                {id === 'listings' && listings.length > 0 && (
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 100,
-                    background: activeTab === id ? 'rgba(255,255,255,0.25)' : 'var(--surface-3)',
-                    fontSize: 11, fontWeight: 700
-                  }}>
-                    {listings.length}
-                  </span>
-                )}
+                <Icon size={16} />
+                {label}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="container" style={{ marginTop: 40 }}>
-        {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
-            {[...Array(3)].map((_, i) => <div key={i} className="skeleton" style={{ height: 220 }} />)}
+      {/* Tab Contents */}
+      <div className="container" style={{ marginTop: 36 }}>
+        {saveSuccessMsg && (
+          <div style={{
+            background: '#ecfdf5', color: '#16a34a', border: '1px solid #bbf7d0',
+            padding: '12px 18px', borderRadius: 12, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8
+          }}>
+            <CheckCircle size={18} />
+            <span>{saveSuccessMsg}</span>
           </div>
-        ) : activeTab === 'rentals' ? (
+        )}
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p className="body-md">Loading your campus dashboard...</p>
+          </div>
+        ) : activeTab === 'listings' ? (
           <div>
-            <h2 style={{ fontSize: 22, marginBottom: 20 }}>My Active & Past Bookings</h2>
-            {rentals.length === 0 ? (
-              <div className="card" style={{ padding: 48, textAlign: 'center' }}>
-                <ShoppingBag size={40} color="var(--ink-faint)" style={{ margin: '0 auto 12px' }} />
-                <h3 style={{ fontSize: 18 }}>No bookings yet</h3>
-                <p className="body-md" style={{ marginTop: 6, marginBottom: 20 }}>Explore campus gear listed by peers around your hostel.</p>
-                <button onClick={() => onViewChange('search')} className="btn btn-primary">Browse Campus Gear</button>
+            {myListings.length === 0 ? (
+              <div className="card" style={{ padding: 48, textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+                <Package size={40} color="var(--ink-muted)" style={{ margin: '0 auto 16px' }} />
+                <h3 style={{ fontSize: 18 }}>No gear listed yet</h3>
+                <p className="body-md" style={{ marginTop: 6, marginBottom: 20 }}>Share idle gear on campus to earn extra passive pocket money.</p>
+                <button onClick={() => onViewChange('list')} className="btn btn-primary">List Your First Item</button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
+                {myListings.map(p => (
+                  <ProductCard key={p.id} product={p} onSelectProduct={onSelectProduct} />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'bookings' ? (
+          <div>
+            {myBookings.length === 0 ? (
+              <div className="card" style={{ padding: 48, textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+                <Calendar size={40} color="var(--ink-muted)" style={{ margin: '0 auto 16px' }} />
+                <h3 style={{ fontSize: 18 }}>No rentals or requests yet</h3>
+                <p className="body-md" style={{ marginTop: 6, marginBottom: 20 }}>Browse available gear from verified students across your campus.</p>
+                <button onClick={() => onViewChange('search')} className="btn btn-primary">Explore Campus Gear</button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {rentals.map((booking) => (
-                  <div key={booking.id} className="card" style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
+                {myBookings.map(b => (
+                  <div key={b.id} className="card" style={{ padding: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                        <span className="badge badge-coral">{booking.status || 'Active'}</span>
-                        <span style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>Booking #{booking.id}</span>
-                      </div>
-                      <h4 style={{ fontSize: 18, marginBottom: 4 }}>{booking.productTitle || 'Campus Rental Item'}</h4>
+                      <span className="badge badge-coral" style={{ marginBottom: 8 }}>{b.status?.toUpperCase() || 'CONFIRMED'}</span>
+                      <h4 style={{ fontSize: 18, margin: '4px 0' }}>{b.productTitle || 'Campus Rental Item'}</h4>
                       <p className="body-sm">
-                        <Calendar size={13} style={{ display: 'inline', marginRight: 4 }} />
-                        {booking.startDate} to {booking.endDate} · <strong style={{ color: 'var(--ink)' }}>₹{booking.totalPrice} INR</strong>
+                        {b.startDate} to {b.endDate} · Total: ₹{b.totalPrice || 450}
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                      {booking.pickupOtp && (
-                        <div style={{ padding: '8px 14px', borderRadius: 12, background: 'var(--coral-light)', border: '1px solid var(--coral-mid)' }}>
-                          <span className="label" style={{ display: 'block', fontSize: 10 }}>Pickup OTP Code</span>
-                          <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700, color: 'var(--coral)' }}>{booking.pickupOtp}</span>
-                        </div>
-                      )}
-
+                    <div style={{ display: 'flex', gap: 10 }}>
                       <button
                         onClick={() => {
-                          setOtpBookingId(booking.id);
+                          setOtpBookingId(b.id);
                           setOtpType('pickup');
                         }}
                         className="btn btn-secondary btn-sm"
                       >
-                        <Key size={13} /> Verify OTP
-                      </button>
-
-                      <button
-                        onClick={() => setActiveChatRecipient({ id: booking.ownerId || 'host_1', name: booking.ownerName || 'Host Student' })}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        <MessageSquare size={13} /> Chat
+                        <Key size={14} /> Enter 4-Digit Handover OTP
                       </button>
                     </div>
                   </div>
@@ -200,39 +248,17 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
               </div>
             )}
           </div>
-        ) : activeTab === 'listings' ? (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 22 }}>My Listed Gear</h2>
-              <button onClick={() => onViewChange('list')} className="btn btn-primary btn-sm">+ List New Item</button>
-            </div>
-            {listings.length === 0 ? (
-              <div className="card" style={{ padding: 48, textAlign: 'center' }}>
-                <Package size={40} color="var(--ink-faint)" style={{ margin: '0 auto 12px' }} />
-                <h3 style={{ fontSize: 18 }}>No gear listed yet</h3>
-                <p className="body-md" style={{ marginTop: 6, marginBottom: 20 }}>Start earning ₹ by listing your unused cameras, laptops, or cycles.</p>
-                <button onClick={() => onViewChange('list')} className="btn btn-primary">+ List Gear Now</button>
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
-                {listings.map(p => (
-                  <ProductCard key={p.id} product={p} onSelectProduct={onSelectProduct} />
-                ))}
-              </div>
-            )}
-          </div>
         ) : activeTab === 'wishlist' ? (
           <div>
-            <h2 style={{ fontSize: 22, marginBottom: 20 }}>My Saved Wishlist</h2>
             {wishlist.length === 0 ? (
-              <div className="card" style={{ padding: 48, textAlign: 'center' }}>
-                <Heart size={40} color="var(--ink-faint)" style={{ margin: '0 auto 12px' }} />
+              <div className="card" style={{ padding: 48, textAlign: 'center', maxWidth: 480, margin: '0 auto' }}>
+                <Heart size={40} color="var(--ink-muted)" style={{ margin: '0 auto 16px' }} />
                 <h3 style={{ fontSize: 18 }}>Your wishlist is empty</h3>
                 <p className="body-md" style={{ marginTop: 6, marginBottom: 20 }}>Click the heart icon on any gear item to save it for later.</p>
                 <button onClick={() => onViewChange('search')} className="btn btn-primary">Browse Gear</button>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
                 {wishlist.map(p => (
                   <ProductCard key={p.id} product={p} onSelectProduct={onSelectProduct} />
                 ))}
@@ -240,26 +266,93 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
             )}
           </div>
         ) : (
-          <div className="card" style={{ padding: 32, maxWidth: 600 }}>
-            <h3 style={{ fontSize: 20, marginBottom: 16 }}>Campus Verification Details</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <span className="label">Registered Email</span>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{user.email}</p>
-              </div>
-              <div>
-                <span className="label">Campus</span>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{user.college}</p>
-              </div>
-              <div>
-                <span className="label">Hostel & Room</span>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{user.hostel}</p>
-              </div>
-              <div>
-                <span className="label">Verified Phone</span>
-                <p style={{ fontSize: 15, fontWeight: 600 }}>{user.phone || '+91 98765 43210'}</p>
-              </div>
+          <div className="card" style={{ padding: 32, maxWidth: 620 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 20, margin: 0 }}>Campus Verification Details</h3>
+              {!isEditingVerification && (
+                <button
+                  onClick={() => setIsEditingVerification(true)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Edit3 size={14} />
+                  <span>Update Real Details</span>
+                </button>
+              )}
             </div>
+
+            {isEditingVerification ? (
+              <form onSubmit={handleSaveVerification} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Registered Email (Verified)</label>
+                  <input type="text" disabled value={user.email} className="input" style={{ background: 'var(--surface-2)', color: 'var(--ink-muted)' }} />
+                </div>
+
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Your Real College or University in India</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCollege}
+                    onChange={e => setEditCollege(e.target.value)}
+                    placeholder="e.g., IIT Delhi, BITS Pilani, VIT Vellore..."
+                    className="input"
+                  />
+                </div>
+
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Hostel Block & Room Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={editHostel}
+                    onChange={e => setEditHostel(e.target.value)}
+                    placeholder="e.g., Karakoram Hostel, Room 214"
+                    className="input"
+                  />
+                </div>
+
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: 6 }}>Verified Indian Phone Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="input"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                  <button type="button" onClick={() => setIsEditingVerification(false)} className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                    <Save size={15} /> Save Real Details
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <span className="label">Registered Email</span>
+                  <p style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{user.email}</p>
+                </div>
+                <div>
+                  <span className="label">Campus / University</span>
+                  <p style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{user.college || 'Not set yet'}</p>
+                </div>
+                <div>
+                  <span className="label">Hostel & Room</span>
+                  <p style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{user.hostel || 'Not set yet'}</p>
+                </div>
+                <div>
+                  <span className="label">Verified Phone</span>
+                  <p style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>{user.phone || 'Not set yet'}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -291,15 +384,6 @@ export default function Dashboard({ user, onRefreshUser, onSelectProduct, onView
             </div>
           </div>
         </div>
-      )}
-
-      {/* Chat Modal */}
-      {activeChatRecipient && (
-        <ChatModal
-          user={user}
-          recipient={activeChatRecipient}
-          onClose={() => setActiveChatRecipient(null)}
-        />
       )}
     </div>
   );

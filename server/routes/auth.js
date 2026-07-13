@@ -29,16 +29,17 @@ router.post('/send-otp', async (req, res) => {
     expires: Date.now() + 10 * 60 * 1000
   };
   
-  // Deliver real live OTP email via Nodemailer/SMTP without blocking UI
-  await Promise.race([
+  // Deliver real live OTP email via Nodemailer/SMTP
+  const emailRes = await Promise.race([
     sendRealEmailOTP(email, generatedOtp),
-    new Promise((resolve) => setTimeout(resolve, 3500))
+    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'Delivery timeout' }), 4000))
   ]);
 
   res.json({
     success: true,
     message: `Verification code sent to ${email}`,
-    devOtpCode: generatedOtp
+    devOtpCode: generatedOtp,
+    delivery: emailRes
   });
 });
 
@@ -81,16 +82,17 @@ router.post('/send-mobile-otp', async (req, res) => {
     expires: Date.now() + 10 * 60 * 1000
   };
   
-  // Deliver real SMS/WhatsApp OTP without blocking UI
-  await Promise.race([
+  // Deliver real SMS/WhatsApp OTP
+  const smsRes = await Promise.race([
     sendRealSmsOTP(cleanPhone, generatedOtp),
-    new Promise((resolve) => setTimeout(resolve, 3500))
+    new Promise((resolve) => setTimeout(() => resolve({ sent: false, reason: 'Delivery timeout' }), 4000))
   ]);
 
   res.json({
     success: true,
     message: `6-digit verification code sent to mobile +91 ${cleanPhone}`,
-    devMobileOtpCode: generatedOtp
+    devMobileOtpCode: generatedOtp,
+    delivery: smsRes
   });
 });
 

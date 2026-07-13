@@ -13,6 +13,7 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deliveryNotice, setDeliveryNotice] = useState('');
   
   // Geolocation auto-detect state
   const [detectingLoc, setDetectingLoc] = useState(false);
@@ -115,9 +116,22 @@ export default function AuthModal({ onClose, onSuccess }) {
     }
 
     try {
-      await api.sendOtp(email);
-      await api.sendMobileOtp(phone);
+      const emailRes = await api.sendOtp(email);
+      const smsRes = await api.sendMobileOtp(phone);
       setOtpStep(true);
+
+      const notes = [];
+      if (emailRes?.delivery && !emailRes.delivery.sent) {
+        notes.push(`Email Notice: ${emailRes.delivery.reason || 'Check SMTP settings'}`);
+      }
+      if (smsRes?.delivery && !smsRes.delivery.sent) {
+        notes.push(`SMS Notice: ${smsRes.delivery.reason || 'Check Fast2SMS balance/key'}`);
+      }
+      if (notes.length > 0) {
+        setDeliveryNotice(notes.join(' | '));
+      } else {
+        setDeliveryNotice('');
+      }
     } catch (err) {
       setError(err.message || 'Failed to send verification codes. Check if account already exists.');
     } finally {
@@ -592,6 +606,14 @@ export default function AuthModal({ onClose, onSuccess }) {
         ) : (
           /* REGISTRATION STEP 2: DUAL EMAIL & MOBILE OTP VERIFICATION */
           <form onSubmit={handleVerifyDualOtpAndRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {deliveryNotice && (
+              <div style={{
+                background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a',
+                padding: '10px 14px', borderRadius: 10, fontSize: 12, lineHeight: 1.4
+              }}>
+                <strong>Delivery Diagnostics:</strong> {deliveryNotice}
+              </div>
+            )}
             <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <Mail size={18} color="var(--coral)" />

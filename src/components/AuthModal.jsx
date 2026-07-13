@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ShieldCheck, ArrowRight, Key, MapPin, CheckCircle, ShieldAlert, Mail, Smartphone, Save } from 'lucide-react';
 import { api } from '../api';
 import { triggerGoogleSignIn } from '../googleAuth';
+import LogoIcon from './LogoIcon';
 
 export default function AuthModal({ onClose, onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -304,18 +305,7 @@ export default function AuthModal({ onClose, onSuccess }) {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img
-            src="/logo.png"
-            alt="RentMyThing Logo"
-            style={{
-              width: 68,
-              height: 68,
-              objectFit: 'contain',
-              margin: '0 auto 12px',
-              display: 'block',
-              filter: 'drop-shadow(0 6px 16px rgba(15, 23, 42, 0.2))',
-            }}
-          />
+          <LogoIcon size={68} style={{ margin: '0 auto 12px' }} />
           <h2 style={{ fontSize: 24, marginBottom: 6 }}>
             {googleCompletionStep
               ? 'Complete Your Student Profile'

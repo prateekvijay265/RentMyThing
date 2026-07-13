@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, LogOut, Plus, Menu, X, User, LayoutDashboard, ChevronDown } from 'lucide-react';
+import LogoIcon from './LogoIcon';
 
 export default function Navbar({ currentView, onViewChange, user, onOpenAuthModal, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -48,17 +49,7 @@ export default function Navbar({ currentView, onViewChange, user, onOpenAuthModa
             onClick={() => go('home')}
             style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
           >
-            <img
-              src="/logo.png"
-              alt="RentMyThing Logo"
-              style={{
-                width: 44,
-                height: 44,
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 3px 8px rgba(15, 23, 42, 0.15))',
-                transition: 'transform 0.2s ease',
-              }}
-            />
+            <LogoIcon size={42} />
             <div>
               <span style={{
                 fontFamily: "'Fraunces', serif",

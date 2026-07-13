@@ -96,10 +96,17 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-white text-[#0f1117] selection:bg-[#fbd5cc] selection:text-[#0f1117]">
       {/* Top Glassmorphism Navbar */}
       <Navbar
+        currentView={activeView}
         activeView={activeView}
         onViewChange={handleViewChange}
         user={user}
         onOpenAuthModal={() => setShowAuthModal(true)}
+        onLogout={() => {
+          setUser(null);
+          localStorage.removeItem('rt_token');
+          localStorage.removeItem('rt_user');
+          setActiveView('home');
+        }}
       />
 
       {/* Main View Router */}

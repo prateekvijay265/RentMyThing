@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, ArrowRight, Key, MapPin, CheckCircle, ShieldAlert, Mail, Save } from 'lucide-react';
+import { X, ShieldCheck, ArrowRight, Key, MapPin, CheckCircle, ShieldAlert, Mail, Smartphone, Save } from 'lucide-react';
 import { api } from '../api';
 import { getGoogleClientId, saveGoogleClientId, triggerGoogleSignIn } from '../googleAuth';
 
@@ -18,19 +18,16 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [detectingLoc, setDetectingLoc] = useState(false);
   const [locSuccessMessage, setLocSuccessMessage] = useState('');
 
-  // Email OTP Verification Step state
+  // Email & Mobile OTP Verification Step state
   const [otpStep, setOtpStep] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
+  const [emailOtpInput, setEmailOtpInput] = useState('');
+  const [mobileOtpInput, setMobileOtpInput] = useState('');
+  const [devEmailOtpHint, setDevEmailOtpHint] = useState('');
+  const [devMobileOtpHint, setDevMobileOtpHint] = useState('');
 
-  // Google Sign-In Profile Completion Step state (when user signs in with Google first time or missing details)
+  // Google Sign-In Profile Completion Step state
   const [googleCompletionStep, setGoogleCompletionStep] = useState(false);
   const [googleUserTemp, setGoogleUserTemp] = useState(null);
-
-  // Client ID Setup / Smart Google Profile Chooser state
-  const [showGoogleChooserModal, setShowGoogleChooserModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
 
   const indianCampusesList = [
     'IIT Delhi - Hauz Khas Campus, New Delhi',
@@ -106,36 +103,38 @@ export default function AuthModal({ onClose, onSuccess }) {
     );
   };
 
-  const handleSendOtp = async (e) => {
+  const handleSendOtps = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const cleanPhone = phone.replace(/[\s\-\+]/g, '');
-    if (!cleanPhone || cleanPhone.length < 10) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
       setError('Please enter a valid 10-digit mobile number.');
       setLoading(false);
       return;
     }
 
     try {
-      const res = await api.sendOtp(email);
+      const emailRes = await api.sendOtp(email);
+      const mobileRes = await api.sendMobileOtp(phone);
       setOtpStep(true);
-      if (res.devOtpCode) {
-        setDevOtpHint(res.devOtpCode);
-      }
+      if (emailRes.devOtpCode) setDevEmailOtpHint(emailRes.devOtpCode);
+      if (mobileRes.devMobileOtpCode) setDevMobileOtpHint(mobileRes.devMobileOtpCode);
     } catch (err) {
-      setError(err.message || 'Failed to send verification code');
+      setError(err.message || 'Failed to send verification codes. Check if account already exists.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyOtpAndRegister = async (e) => {
+  const handleVerifyDualOtpAndRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      await api.verifyOtp(email, otpInput);
+      await api.verifyOtp(email, emailOtpInput);
+      await api.verifyMobileOtp(phone, mobileOtpInput);
+
       const res = await api.register({
         email,
         name,
@@ -143,10 +142,11 @@ export default function AuthModal({ onClose, onSuccess }) {
         hostel,
         phone,
         otpVerified: true,
+        mobileVerified: true
       });
       onSuccess(res.user);
     } catch (err) {
-      setError(err.message || 'OTP verification failed. Please check code.');
+      setError(err.message || 'OTP verification failed. Please check both codes.');
     } finally {
       setLoading(false);
     }
@@ -177,7 +177,6 @@ export default function AuthModal({ onClose, onSuccess }) {
         googleId: googleUser.sub || googleUser.email,
       });
 
-      // If Google sign-in detected missing details or first-time login, ask for College & Phone before finishing!
       if (res.needsCompletion || !res.user.college || !res.user.phone) {
         setGoogleUserTemp(res.user);
         setCollege(res.user.college || '');
@@ -199,8 +198,8 @@ export default function AuthModal({ onClose, onSuccess }) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const cleanPhone = phone.replace(/[\s\-\+]/g, '');
-    if (!cleanPhone || cleanPhone.length < 10) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
       setError('Please enter a valid 10-digit mobile number.');
       setLoading(false);
       return;
@@ -212,17 +211,16 @@ export default function AuthModal({ onClose, onSuccess }) {
     }
 
     try {
-      // Save details persistently
       const updatedUser = {
         ...googleUserTemp,
         college: college.trim(),
         hostel: hostel.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone,
       };
       localStorage.setItem('rt_user', JSON.stringify(updatedUser));
       onSuccess(updatedUser);
     } catch (err) {
-      setError(err.message || 'Failed to save campus details.');
+      setError(err.message || 'Failed to complete registration. Mobile number may already exist on another account.');
     } finally {
       setLoading(false);
     }
@@ -235,21 +233,8 @@ export default function AuthModal({ onClose, onSuccess }) {
       handleGoogleSuccess,
       (err) => {
         setGoogleLoading(false);
-        setShowGoogleChooserModal(true);
       }
     );
-  };
-
-  const handleSmartGoogleProfileSubmit = async (e) => {
-    e.preventDefault();
-    if (!customGoogleEmail.trim()) return;
-    setShowGoogleChooserModal(false);
-    await handleGoogleSuccess({
-      email: customGoogleEmail.trim(),
-      name: customGoogleName.trim() || customGoogleEmail.split('@')[0],
-      picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${customGoogleEmail.trim()}`,
-      sub: 'google_' + customGoogleEmail.trim(),
-    });
   };
 
   const handleFastLogin = async (testEmail) => {
@@ -272,7 +257,7 @@ export default function AuthModal({ onClose, onSuccess }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }} className="anim-in">
       <div className="card" style={{
-        width: '100%', maxWidth: 460, maxHeight: '92vh', overflowY: 'auto',
+        width: '100%', maxWidth: 480, maxHeight: '92vh', overflowY: 'auto',
         padding: 32, position: 'relative', background: 'var(--surface)',
       }}>
         <button
@@ -304,7 +289,7 @@ export default function AuthModal({ onClose, onSuccess }) {
               ? 'Please provide your campus & mobile number once to finish registration.'
               : isLogin
               ? 'Welcome back! Sign in to continue.'
-              : 'We verify all students ONCE at signup so identity is never faked.'}
+              : 'Strict 1-Account Policy: Email, Google ID & Mobile are uniquely verified.'}
           </p>
         </div>
 
@@ -468,7 +453,7 @@ export default function AuthModal({ onClose, onSuccess }) {
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
             </div>
 
-            <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <form onSubmit={handleSendOtps} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <label className="label" style={{ display: 'block', marginBottom: 4 }}>Email Address</label>
                 <input
@@ -554,44 +539,61 @@ export default function AuthModal({ onClose, onSuccess }) {
               </div>
 
               <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-                <span>{loading ? 'Sending OTP...' : 'Next: Send Verification Code'}</span>
+                <span>{loading ? 'Sending OTPs...' : 'Next: Verify Email & Mobile OTP'}</span>
                 {!loading && <ArrowRight size={15} />}
               </button>
             </form>
           </>
         ) : (
-          /* REGISTRATION STEP 2: EMAIL OTP VERIFICATION */
-          <form onSubmit={handleVerifyOtpAndRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12, textAlign: 'center' }}>
-              <Mail size={24} color="var(--coral)" style={{ margin: '0 auto 8px' }} />
-              <h4 style={{ fontSize: 15, margin: 0 }}>Verify Email Address</h4>
-              <p className="body-sm" style={{ marginTop: 4 }}>
-                We sent a 6-digit code to <strong>{email}</strong>
-              </p>
-              {devOtpHint && (
-                <div style={{ marginTop: 10, background: '#fff', border: '1px dashed var(--coral)', padding: '6px 10px', borderRadius: 8, fontSize: 13, color: 'var(--coral)', fontWeight: 700 }}>
-                  ⚡ Verification OTP Code: {devOtpHint}
+          /* REGISTRATION STEP 2: DUAL EMAIL & MOBILE OTP VERIFICATION */
+          <form onSubmit={handleVerifyDualOtpAndRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Mail size={18} color="var(--coral)" />
+                <span style={{ fontSize: 13, fontWeight: 700 }}>Email OTP sent to {email}</span>
+              </div>
+              {devEmailOtpHint && (
+                <div style={{ background: '#fff', border: '1px dashed var(--coral)', padding: '6px 10px', borderRadius: 8, fontSize: 13, color: 'var(--coral)', fontWeight: 700, marginBottom: 12 }}>
+                  ⚡ Email OTP: {devEmailOtpHint}
                 </div>
               )}
-            </div>
-
-            <div>
-              <label className="label" style={{ display: 'block', marginBottom: 6 }}>Enter 6-Digit Verification Code</label>
               <input
                 type="text"
                 maxLength={6}
                 required
-                value={otpInput}
-                onChange={e => setOtpInput(e.target.value)}
-                placeholder="e.g. 839201"
+                value={emailOtpInput}
+                onChange={e => setEmailOtpInput(e.target.value)}
+                placeholder="Enter 6-digit Email OTP"
                 className="input"
-                style={{ textAlign: 'center', fontSize: 22, letterSpacing: '0.2em', fontWeight: 700 }}
+                style={{ textAlign: 'center', fontSize: 18, letterSpacing: '0.15em', fontWeight: 700 }}
+              />
+            </div>
+
+            <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Smartphone size={18} color="var(--coral)" />
+                <span style={{ fontSize: 13, fontWeight: 700 }}>Mobile OTP sent to +91 {phone}</span>
+              </div>
+              {devMobileOtpHint && (
+                <div style={{ background: '#fff', border: '1px dashed var(--coral)', padding: '6px 10px', borderRadius: 8, fontSize: 13, color: 'var(--coral)', fontWeight: 700, marginBottom: 12 }}>
+                  ⚡ Mobile OTP: {devMobileOtpHint}
+                </div>
+              )}
+              <input
+                type="text"
+                maxLength={6}
+                required
+                value={mobileOtpInput}
+                onChange={e => setMobileOtpInput(e.target.value)}
+                placeholder="Enter 6-digit Mobile OTP"
+                className="input"
+                style={{ textAlign: 'center', fontSize: 18, letterSpacing: '0.15em', fontWeight: 700 }}
               />
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
               <CheckCircle size={16} />
-              <span>{loading ? 'Verifying...' : 'Complete Verification & Register'}</span>
+              <span>{loading ? 'Verifying Both OTPs...' : 'Complete Verification & Create Account'}</span>
             </button>
 
             <button
@@ -647,68 +649,6 @@ export default function AuthModal({ onClose, onSuccess }) {
           </div>
         </div>
       </div>
-
-      {showGoogleChooserModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1200,
-          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-        }}>
-          <div className="card anim-in" style={{
-            width: '100%', maxWidth: 420, background: 'var(--surface)',
-            padding: 28, position: 'relative'
-          }}>
-            <button onClick={() => setShowGoogleChooserModal(false)} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', cursor: 'pointer' }}>
-              <X size={18} />
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <h3 style={{ fontSize: 18, margin: 0 }}>Google Account Sign-In</h3>
-            </div>
-
-            <p className="body-sm" style={{ marginBottom: 16 }}>
-              Enter your Google or institutional email to sign in instantly:
-            </p>
-
-            <form onSubmit={handleSmartGoogleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Google / Gmail Address</label>
-                <input
-                  type="email"
-                  required
-                  value={customGoogleEmail}
-                  onChange={e => setCustomGoogleEmail(e.target.value)}
-                  placeholder="yourname@gmail.com or @iitd.ac.in"
-                  className="input"
-                  autoComplete="email"
-                />
-              </div>
-
-              <div>
-                <label className="label" style={{ display: 'block', marginBottom: 4 }}>Full Name</label>
-                <input
-                  type="text"
-                  value={customGoogleName}
-                  onChange={e => setCustomGoogleName(e.target.value)}
-                  placeholder="Prateek Vijay"
-                  className="input"
-                  autoComplete="name"
-                />
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                Continue with Google Profile
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

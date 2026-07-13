@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { db, saveDatabase } = require('../db');
 
-// In-memory OTP storage for email verification: { email: { otp: "123456", expires: Date.now() + 10min } }
+// In-memory OTP storage for email & mobile verification
 const otpStore = {};
+const mobileOtpStore = {};
 
 const getUserFromReq = (req) => {
   const authHeader = req.headers.authorization;
@@ -12,6 +13,8 @@ const getUserFromReq = (req) => {
   if (!token) return null;
   return db.users.find((u) => u.id === token || u.email.toLowerCase() === token.toLowerCase()) || null;
 };
+
+const cleanDigits = (str = '') => str.replace(/\D/g, '').slice(-10);
 
 // Send Email Verification OTP
 router.post('/send-otp', (req, res) => {
@@ -24,7 +27,7 @@ router.post('/send-otp', (req, res) => {
     otp: generatedOtp,
     expires: Date.now() + 10 * 60 * 1000
   };
-  console.log(`[AUTH OTP] Sent verification OTP ${generatedOtp} for email ${email}`);
+  console.log(`[EMAIL OTP] Sent verification OTP ${generatedOtp} for email ${email}`);
   res.json({
     success: true,
     message: `Verification code sent to ${email}`,
@@ -49,6 +52,53 @@ router.post('/verify-otp', (req, res) => {
   res.json({ success: true, verified: true });
 });
 
+// Send Mobile OTP Verification
+router.post('/send-mobile-otp', (req, res) => {
+  const { phone } = req.body;
+  const cleanPhone = cleanDigits(phone);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+  }
+
+  // Check uniqueness: ensure no existing account already uses this mobile number
+  const existingPhoneUser = db.users.find((u) => cleanDigits(u.phone) === cleanPhone);
+  if (existingPhoneUser) {
+    return res.status(409).json({
+      error: 'An account with this mobile number already exists! Please Sign In instead.'
+    });
+  }
+
+  const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  mobileOtpStore[cleanPhone] = {
+    otp: generatedOtp,
+    expires: Date.now() + 10 * 60 * 1000
+  };
+  console.log(`[MOBILE OTP] Sent verification OTP ${generatedOtp} for mobile ${cleanPhone}`);
+  res.json({
+    success: true,
+    message: `6-digit verification code sent to mobile +91 ${cleanPhone}`,
+    devMobileOtpCode: generatedOtp
+  });
+});
+
+// Verify Mobile OTP
+router.post('/verify-mobile-otp', (req, res) => {
+  const { phone, otp } = req.body;
+  const cleanPhone = cleanDigits(phone);
+  if (!cleanPhone || !otp) {
+    return res.status(400).json({ error: 'Mobile number and OTP code are required' });
+  }
+  const record = mobileOtpStore[cleanPhone];
+  if (!record || record.expires < Date.now()) {
+    return res.status(400).json({ error: 'Mobile OTP has expired or is invalid.' });
+  }
+  if (record.otp !== otp.trim()) {
+    return res.status(400).json({ error: 'Incorrect 6-digit mobile OTP code.' });
+  }
+  delete mobileOtpStore[cleanPhone];
+  res.json({ success: true, mobileVerified: true });
+});
+
 router.post('/login', (req, res) => {
   const { email } = req.body;
   const user = db.users.find((u) => u.email.toLowerCase() === (email || '').toLowerCase());
@@ -59,20 +109,29 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/register', (req, res) => {
-  const { email, name, college, hostel, phone, otpVerified } = req.body;
+  const { email, name, college, hostel, phone, otpVerified, mobileVerified } = req.body;
   if (!email || !name) {
     return res.status(400).json({ error: 'Email and Full Name are required' });
   }
-  let existingUser = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (existingUser) {
+
+  const cleanPhone = cleanDigits(phone);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+  }
+
+  // ENFORCE TRIPLE UNIQUENESS (No duplicate email OR duplicate mobile number)
+  const existingEmailUser = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  if (existingEmailUser) {
     return res.status(409).json({
       error: 'An account with this email address already exists! Please switch to Sign In.'
     });
   }
 
-  const cleanPhone = (phone || '').replace(/[\s\-\+]/g, '');
-  if (!cleanPhone || cleanPhone.length < 10) {
-    return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+  const existingPhoneUser = db.users.find((u) => cleanDigits(u.phone) === cleanPhone);
+  if (existingPhoneUser) {
+    return res.status(409).json({
+      error: 'An account with this mobile number already exists! Please use a different number or Sign In.'
+    });
   }
 
   const user = {
@@ -82,10 +141,10 @@ router.post('/register', (req, res) => {
     role: 'STUDENT',
     college: college || 'Campus Student',
     hostel: hostel || 'Hostel Room',
-    phone: phone.trim(),
+    phone: cleanPhone,
     avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
     isVerified: true,
-    verificationIdType: otpVerified ? 'OTP Verified Student Member' : 'Verified Campus Network Member',
+    verificationIdType: otpVerified ? 'Dual OTP Verified Student Member' : 'Verified Campus Network Member',
     rating: 5.0,
     completedRentals: 0,
     joinedDate: new Date().toISOString().split('T')[0]
@@ -95,14 +154,17 @@ router.post('/register', (req, res) => {
   res.status(201).json({ token: user.id, user });
 });
 
-// Google Authentication Endpoint with Profile Completion Detection
+// Google Authentication Endpoint with Profile Completion & Uniqueness Protection
 router.post('/google', (req, res) => {
-  const { email, name, avatar, college, hostel, phone } = req.body;
+  const { email, name, avatar, college, hostel, phone, googleId } = req.body;
   if (!email) return res.status(400).json({ error: 'Google email required' });
 
-  let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  let user = db.users.find((u) =>
+    u.email.toLowerCase() === email.toLowerCase() ||
+    (googleId && u.googleId === googleId)
+  );
+
   if (user) {
-    // Check if details are already filled (not placeholder or empty)
     const hasDetails = user.college &&
       user.phone &&
       user.college !== 'Indian University Campus' &&
@@ -116,15 +178,26 @@ router.post('/google', (req, res) => {
     });
   }
 
-  // First time Google Sign In -> Create initial record & require completion
+  // If first time Google Sign Up, check if phone provided already exists on another account
+  const cleanPhone = cleanDigits(phone);
+  if (cleanPhone && cleanPhone.length === 10) {
+    const existingPhoneUser = db.users.find((u) => cleanDigits(u.phone) === cleanPhone);
+    if (existingPhoneUser) {
+      return res.status(409).json({
+        error: 'An account with this mobile number already exists!'
+      });
+    }
+  }
+
   user = {
     id: `user_g_${Date.now()}`,
+    googleId: googleId || `g_${email.toLowerCase()}`,
     email: email.toLowerCase(),
     name: name || email.split('@')[0],
     role: 'STUDENT',
     college: college || '',
     hostel: hostel || '',
-    phone: phone || '',
+    phone: cleanPhone || '',
     avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
     isVerified: true,
     verificationIdType: 'Google SSO Verified Student',
@@ -152,7 +225,14 @@ router.put('/profile', (req, res) => {
   if (name) user.name = name;
   if (college) user.college = college;
   if (hostel) user.hostel = hostel;
-  if (phone) user.phone = phone;
+  if (phone) {
+    const cleanPhone = cleanDigits(phone);
+    const conflict = db.users.find((u) => u.id !== user.id && cleanDigits(u.phone) === cleanPhone);
+    if (conflict) {
+      return res.status(409).json({ error: 'Mobile number already linked to another account.' });
+    }
+    user.phone = cleanPhone;
+  }
   saveDatabase(db);
   res.json(user);
 });

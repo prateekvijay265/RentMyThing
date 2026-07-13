@@ -50,6 +50,24 @@ export const api = {
     return await handleResponse(res);
   },
 
+  async sendMobileOtp(phone) {
+    const res = await fetch(`${API_BASE}/auth/send-mobile-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    return await handleResponse(res);
+  },
+
+  async verifyMobileOtp(phone, otp) {
+    const res = await fetch(`${API_BASE}/auth/verify-mobile-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp })
+    });
+    return await handleResponse(res);
+  },
+
   async login(email) {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',

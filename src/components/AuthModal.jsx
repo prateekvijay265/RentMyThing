@@ -23,6 +23,8 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [otpStep, setOtpStep] = useState(false);
   const [emailOtpInput, setEmailOtpInput] = useState('');
   const [mobileOtpInput, setMobileOtpInput] = useState('');
+  const [devEmailCode, setDevEmailCode] = useState('');
+  const [devSmsCode, setDevSmsCode] = useState('');
 
   // Google Sign-In Profile Completion Step state
   const [googleCompletionStep, setGoogleCompletionStep] = useState(false);
@@ -118,6 +120,8 @@ export default function AuthModal({ onClose, onSuccess }) {
     try {
       const emailRes = await api.sendOtp(email);
       const smsRes = await api.sendMobileOtp(phone);
+      setDevEmailCode(emailRes?.devOtpCode || '');
+      setDevSmsCode(smsRes?.devMobileOtpCode || '');
       setOtpStep(true);
 
       const notes = [];
@@ -611,7 +615,24 @@ export default function AuthModal({ onClose, onSuccess }) {
                 background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a',
                 padding: '10px 14px', borderRadius: 10, fontSize: 12, lineHeight: 1.4
               }}>
-                <strong>Delivery Diagnostics:</strong> {deliveryNotice}
+                <div style={{ marginBottom: 8 }}>
+                  <strong>Delivery Diagnostics:</strong> {deliveryNotice}
+                </div>
+                {(devEmailCode || devSmsCode) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (devEmailCode) setEmailOtpInput(devEmailCode);
+                      if (devSmsCode) setMobileOtpInput(devSmsCode);
+                    }}
+                    style={{
+                      background: '#f59e0b', color: '#fff', border: 'none',
+                      padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    ⚡ Auto-Fill Testing OTPs (Bypass Free Tier Block)
+                  </button>
+                )}
               </div>
             )}
             <div style={{ background: 'var(--surface-2)', padding: 14, borderRadius: 12 }}>

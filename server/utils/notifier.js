@@ -100,10 +100,19 @@ async function sendRealSmsOTP(phoneNumber, otpCode) {
   const fast2smsKey = process.env.FAST2SMS_API_KEY;
   if (fast2smsKey) {
     try {
-      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey.trim())}&route=q&message=${encodeURIComponent('Your RentMyThing verification OTP is: ' + otpCode + '. Valid for 10 mins.')}&language=english&flash=0&numbers=${cleanNumber}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log(`[FAST2SMS RESPONSE]`, JSON.stringify(data));
+      let url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey.trim())}&route=q&message=${encodeURIComponent('Your RentMyThing verification OTP is: ' + otpCode + '. Valid for 10 mins.')}&language=english&flash=0&numbers=${cleanNumber}`;
+      let response = await fetch(url);
+      let data = await response.json();
+      console.log(`[FAST2SMS QUICK RESPONSE]`, JSON.stringify(data));
+
+      if (!data.return) {
+        // Fallback to Fast2SMS OTP route if Quick SMS route is restricted
+        const otpUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(fast2smsKey.trim())}&route=otp&variables_values=${otpCode}&numbers=${cleanNumber}`;
+        const otpResp = await fetch(otpUrl);
+        data = await otpResp.json();
+        console.log(`[FAST2SMS OTP ROUTE RESPONSE]`, JSON.stringify(data));
+      }
+
       return {
         sent: data.return === true,
         provider: 'fast2sms',

@@ -1,0 +1,134 @@
+const nodemailer = require('nodemailer');
+
+/**
+ * Sends a real live email OTP using Nodemailer & SMTP (Gmail App Password, Brevo, SendGrid, Outlook, etc.)
+ */
+async function sendRealEmailOTP(recipientEmail, otpCode) {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const secure = port === 465; // true for 465, false for other ports
+  const user = process.env.SMTP_EMAIL || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (!user || !pass) {
+    console.log(`[NOTIFIER INFO] Real Email OTP (${otpCode}) generated for ${recipientEmail}.`);
+    console.log(`[SMTP CONFIG NOTICE] To deliver live emails to user inboxes, add SMTP_EMAIL and SMTP_PASS (Gmail App Password) to your Render environment variables.`);
+    return { sent: false, reason: 'Missing SMTP credentials in process.env' };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass }
+    });
+
+    const htmlContent = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; border-radius: 16px; background: #ffffff; border: 1px solid #e5e7eb;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #ea580c; font-size: 26px; margin: 0;">RentMyThing</h1>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">Verified Indian Campus Marketplace</p>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 24px; text-align: center;">
+          <p style="color: #9a3412; font-size: 14px; margin: 0 0 12px 0; font-weight: 600;">YOUR 6-DIGIT VERIFICATION CODE</p>
+          <div style="font-size: 36px; font-weight: 800; letter-spacing: 6px; color: #ea580c; font-family: monospace;">
+            ${otpCode}
+          </div>
+        </div>
+        <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin-top: 24px;">
+          Use this code to complete your campus verification on RentMyThing. This code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+          If you didn't request this code, you can safely ignore this email.
+        </p>
+      </div>
+    `;
+
+    const info = await transporter.sendMail({
+      from: `"RentMyThing Verification" <${user}>`,
+      to: recipientEmail,
+      subject: `${otpCode} is your RentMyThing Campus Verification Code`,
+      text: `Your RentMyThing campus verification code is: ${otpCode}. It expires in 10 minutes.`,
+      html: htmlContent
+    });
+
+    console.log(`[EMAIL SENT SUCCESS] Live OTP email delivered to ${recipientEmail} (Message ID: ${info.messageId})`);
+    return { sent: true, messageId: info.messageId };
+  } catch (err) {
+    console.error(`[EMAIL SEND FAILED] Error sending email to ${recipientEmail}:`, err.message);
+    return { sent: false, error: err.message };
+  }
+}
+
+/**
+ * Sends a real live SMS OTP using Fast2SMS (+91 Indian numbers) or Twilio
+ */
+async function sendRealSmsOTP(phoneNumber, otpCode) {
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  
+  // Option 1: Fast2SMS (Most popular & affordable for Indian +91 mobile numbers)
+  const fast2smsKey = process.env.FAST2SMS_API_KEY;
+  if (fast2smsKey) {
+    try {
+      const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+        method: 'POST',
+        headers: {
+          'authorization': fast2smsKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          route: 'q',
+          message: `Your RentMyThing verification OTP is ${otpCode}. Valid for 10 minutes. Do not share.`,
+          language: 'english',
+          flash: 0,
+          numbers: cleanNumber
+        })
+      });
+      const data = await response.json();
+      console.log(`[FAST2SMS SUCCESS] SMS delivered to +91 ${cleanNumber}`);
+      return { sent: true, provider: 'fast2sms', response: data };
+    } catch (err) {
+      console.error(`[FAST2SMS ERROR]`, err.message);
+    }
+  }
+
+  // Option 2: Twilio
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+  if (twilioSid && twilioToken && twilioFrom) {
+    try {
+      const formattedPhone = cleanNumber.startsWith('91') ? `+${cleanNumber}` : `+91${cleanNumber}`;
+      const authHeader = 'Basic ' + Buffer.from(`${twilioSid}:${twilioToken}`).toString('base64');
+      const params = new URLSearchParams();
+      params.append('To', formattedPhone);
+      params.append('From', twilioFrom);
+      params.append('Body', `RentMyThing Campus verification code: ${otpCode}. Valid for 10 minutes.`);
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+      const data = await response.json();
+      console.log(`[TWILIO SUCCESS] SMS delivered to ${formattedPhone}`);
+      return { sent: true, provider: 'twilio', response: data };
+    } catch (err) {
+      console.error(`[TWILIO ERROR]`, err.message);
+    }
+  }
+
+  console.log(`[NOTIFIER INFO] Real Mobile SMS OTP (${otpCode}) generated for +91 ${cleanNumber}.`);
+  console.log(`[SMS CONFIG NOTICE] To deliver live SMS messages to mobile phones, add FAST2SMS_API_KEY or TWILIO_ACCOUNT_SID to your Render environment variables.`);
+  return { sent: false, reason: 'Missing Fast2SMS or Twilio API keys' };
+}
+
+module.exports = {
+  sendRealEmailOTP,
+  sendRealSmsOTP
+};

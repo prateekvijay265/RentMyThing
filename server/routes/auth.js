@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db, saveDatabase } = require('../db');
+const { sendRealEmailOTP, sendRealSmsOTP } = require('../utils/notifier');
 
 // In-memory OTP storage for email & mobile verification
 const otpStore = {};
@@ -17,7 +18,7 @@ const getUserFromReq = (req) => {
 const cleanDigits = (str = '') => str.replace(/\D/g, '').slice(-10);
 
 // Send Email Verification OTP
-router.post('/send-otp', (req, res) => {
+router.post('/send-otp', async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email address is required' });
@@ -27,7 +28,10 @@ router.post('/send-otp', (req, res) => {
     otp: generatedOtp,
     expires: Date.now() + 10 * 60 * 1000
   };
-  console.log(`[EMAIL OTP] Sent verification OTP ${generatedOtp} for email ${email}`);
+  
+  // Deliver real live OTP email via Nodemailer/SMTP
+  await sendRealEmailOTP(email, generatedOtp);
+
   res.json({
     success: true,
     message: `Verification code sent to ${email}`,
@@ -53,7 +57,7 @@ router.post('/verify-otp', (req, res) => {
 });
 
 // Send Mobile OTP Verification
-router.post('/send-mobile-otp', (req, res) => {
+router.post('/send-mobile-otp', async (req, res) => {
   const { phone } = req.body;
   const cleanPhone = cleanDigits(phone);
   if (!cleanPhone || cleanPhone.length < 10) {
@@ -73,7 +77,10 @@ router.post('/send-mobile-otp', (req, res) => {
     otp: generatedOtp,
     expires: Date.now() + 10 * 60 * 1000
   };
-  console.log(`[MOBILE OTP] Sent verification OTP ${generatedOtp} for mobile ${cleanPhone}`);
+  
+  // Deliver real SMS OTP
+  await sendRealSmsOTP(cleanPhone, generatedOtp);
+
   res.json({
     success: true,
     message: `6-digit verification code sent to mobile +91 ${cleanPhone}`,

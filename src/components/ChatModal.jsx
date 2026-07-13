@@ -1,0 +1,145 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Send, ShieldCheck, UserCheck, MessageSquare, AlertCircle } from 'lucide-react';
+import { api } from '../api';
+
+export default function ChatModal({ user, recipient, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const bottomRef = useRef(null);
+
+  const loadMessages = async () => {
+    try {
+      const data = await api.getMessages(recipient.id);
+      setMessages(data || []);
+    } catch (err) {
+      console.error('Chat load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMessages();
+    const interval = setInterval(loadMessages, 4000);
+    return () => clearInterval(interval);
+  }, [recipient]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+    try {
+      await api.sendMessage(recipient.id, inputText);
+      setInputText('');
+      loadMessages();
+    } catch (err) {
+      alert('Send failed: ' + err.message);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1100,
+      background: 'rgba(15,17,23,0.5)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }} className="anim-in">
+      <div className="card" style={{
+        width: '100%', maxWidth: 460, height: 560,
+        display: 'flex', flexDirection: 'column',
+        background: 'var(--surface)', overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px 20px', borderBottom: '1px solid var(--border)',
+          background: 'var(--surface-2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: 'var(--coral)', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 700,
+            }}>
+              {recipient.name?.[0]?.toUpperCase() || 'P'}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{recipient.name}</h4>
+                <span className="badge badge-green" style={{ padding: '2px 6px', fontSize: 10 }}>Verified</span>
+              </div>
+              <p className="body-sm" style={{ fontSize: 11 }}>Campus Peer · 4s live sync</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Mutual safety reminder */}
+        <div style={{ background: 'var(--coral-light)', padding: '8px 16px', borderBottom: '1px solid var(--coral-mid)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShieldCheck size={14} color="var(--coral)" />
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--coral)' }}>
+            Always verify handover OTP at pickup inside campus hostel premises.
+          </span>
+        </div>
+
+        {/* Message body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {loading ? (
+            <p className="body-sm" style={{ textAlign: 'center' }}>Connecting to student peer...</p>
+          ) : messages.length === 0 ? (
+            <div style={{ textAlign: 'center', margin: 'auto 0' }}>
+              <MessageSquare size={32} color="var(--ink-faint)" style={{ margin: '0 auto 8px' }} />
+              <p className="body-sm">No messages yet. Start the conversation!</p>
+            </div>
+          ) : (
+            messages.map((m, idx) => {
+              const isMine = m.senderId === user?.id || m.senderEmail === user?.email;
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    alignSelf: isMine ? 'flex-end' : 'flex-start',
+                    maxWidth: '80%',
+                    padding: '10px 14px',
+                    borderRadius: 16,
+                    background: isMine ? 'var(--coral)' : 'var(--surface-2)',
+                    color: isMine ? '#fff' : 'var(--ink)',
+                    border: isMine ? 'none' : '1px solid var(--border)',
+                    fontSize: 13,
+                  }}
+                >
+                  <p style={{ margin: 0, wordBreak: 'break-word' }}>{m.content || m.text}</p>
+                  <span style={{ fontSize: 10, opacity: 0.7, display: 'block', textAlign: 'right', marginTop: 4 }}>
+                    {m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now'}
+                  </span>
+                </div>
+              );
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input bar */}
+        <form onSubmit={handleSend} style={{ padding: '14px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            placeholder="Write message to student host..."
+            className="input"
+            style={{ flex: 1 }}
+          />
+          <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '10px 16px' }}>
+            <Send size={14} />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

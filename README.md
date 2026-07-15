@@ -1,4 +1,4 @@
-﻿# 🎓 RentMyThing India
+# 🎓 RentMyThing India
 ### Verified Peer-to-Peer Campus Gear Rental — IIT · BITS · IIM
 
 > Borrow cameras, laptops, cycles, projectors and more from verified students on your campus. Pay in ₹ INR. No middlemen. AI-protected.
@@ -55,6 +55,38 @@ Built for the Indian student ecosystem: ₹ INR pricing, .ac.in email verificati
 ### 📋 Demand Hub
 - **Post Gear Requests** — Can't find what you need? Post a request with budget and pickup date
 - **Make Offers** — Other students can submit offers on open requests
+
+---
+
+## 🖼️ Visual Showcase & Feature Walkthrough
+
+### 1. Explore & Browse Campus Gear (`/home`)
+> **Hero Section & Featured Listings:** Browse verified peer-to-peer listings sorted by category across IIT, BITS, and IIM campuses with real-time condition badges and daily rental pricing.
+![Homepage](screenshots/1_homepage.png)
+
+### 2. Search & Filter Gear (`/search`)
+> **NLP Search Bar & Price Sliders:** Filter gear instantly by category pills or price range, or type natural queries like *"camera under ₹500 near hostel"* for automatic AI parsing.
+![Search & Filter](screenshots/2_search_filter.png)
+
+### 3. Product Detail & Booking Calculator (`/detail`)
+> **Rental Booking & Verified Student Chat:** View detailed item specs, calculate exact duration pricing, run instant AI safety audits, or open direct verified peer-to-peer chat.
+![Product Detail](screenshots/3_product_detail.png)
+
+### 4. AI Safety Center & Neural Fraud Shield (`/ai`)
+> **Google Gemini 2.5 Flash Risk Audit:** Every listing is analyzed for price gouging, advance payment scams, and description anomalies with live risk score badges and safety recommendations.
+![AI Safety Center](screenshots/4_ai_safety_center.png)
+
+### 5. Live Campus Gear Map (`/map`)
+> **Interactive Leaflet Map:** Explore physical gear availability across campus hostels and departments in real time with interactive markers.
+![Live Map](screenshots/5_live_campus_map.png)
+
+### 6. Demand Hub & Rental Requests (`/requests`)
+> **Post Needs & Make Offers:** Can't find an item? Post custom rental requirements with your target budget and pickup dates so other verified peers can submit instant offers.
+![Demand Hub](screenshots/6_demand_hub.png)
+
+### 7. Verified Student Authentication (`/auth`)
+> **.ac.in Email & Dual-Route OTP Verification:** Fast and secure login using institutional `.ac.in` emails, Fast2SMS mobile OTP fallback, or one-click Google Sign-In with JWT sessions.
+![Authentication Modal](screenshots/7_auth_modal.png)
 
 ---
 

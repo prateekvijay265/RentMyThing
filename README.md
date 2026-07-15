@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="screenshots/ai_hero_banner.svg" alt="RentMyThing AI Banner" width="100%" />
+  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/ai_hero_banner.svg" alt="RentMyThing AI Banner" width="100%" />
 </div>
 
 <div align="center">
@@ -15,7 +15,7 @@
 </div>
 
 <div align="center">
-  <img src="screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
+  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
 </div>
 
 > **Borrow cameras, laptops, cycles, projectors and more from verified `.ac.in` peers on your campus. Pay in ₹ INR. No middlemen. Protected by Google Gemini Neural AI.**
@@ -24,7 +24,7 @@
 **💻 GitHub:** [github.com/prateekvijay265/RentMyThing](https://github.com/prateekvijay265/RentMyThing)
 
 <div align="center">
-  <img src="screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
+  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
 </div>
 
 ## 📸 What is RentMyThing?
@@ -34,7 +34,7 @@ RentMyThing is a full-stack campus marketplace where verified Indian university 
 Built for the Indian student ecosystem: ₹ INR pricing, `.ac.in` email verification, campus hostel location tags, and OTP-secured handovers.
 
 <div align="center">
-  <img src="screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
+  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg" alt="Section Divider" width="100%" />
 </div>
 
 ## 🚀 Features
@@ -77,39 +77,39 @@ Built for the Indian student ecosystem: ₹ INR pricing, `.ac.in` email verifica
 - **Post Gear Requests** — Can't find what you need? Post a request with budget and pickup date
 - **Make Offers** — Other students can submit offers on open requests
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🖼️ Visual Showcase & Feature Walkthrough
 
 ### 1. Explore & Browse Campus Gear (`/home`)
 > **Hero Section & Featured Listings:** Browse verified peer-to-peer listings sorted by category across IIT, BITS, and IIM campuses with real-time condition badges and daily rental pricing.
-![Homepage](screenshots/1_homepage.png)
+![Homepage](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/1_homepage.png)
 
 ### 2. Search & Filter Gear (`/search`)
 > **NLP Search Bar & Price Sliders:** Filter gear instantly by category pills or price range, or type natural queries like *"camera under ₹500 near hostel"* for automatic AI parsing.
-![Search & Filter](screenshots/2_search_filter.png)
+![Search & Filter](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/2_search_filter.png)
 
 ### 3. Product Detail & Booking Calculator (`/detail`)
 > **Rental Booking & Verified Student Chat:** View detailed item specs, calculate exact duration pricing, run instant AI safety audits, or open direct verified peer-to-peer chat.
-![Product Detail](screenshots/3_product_detail.png)
+![Product Detail](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/3_product_detail.png)
 
 ### 4. AI Safety Center & Neural Fraud Shield (`/ai`)
 > **Google Gemini 2.5 Flash Risk Audit:** Every listing is analyzed for price gouging, advance payment scams, and description anomalies with live risk score badges and safety recommendations.
-![AI Safety Center](screenshots/4_ai_safety_center.png)
+![AI Safety Center](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/4_ai_safety_center.png)
 
 ### 5. Live Campus Gear Map (`/map`)
 > **Interactive Leaflet Map:** Explore physical gear availability across campus hostels and departments in real time with interactive markers.
-![Live Map](screenshots/5_live_campus_map.png)
+![Live Map](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/5_live_campus_map.png)
 
 ### 6. Demand Hub & Rental Requests (`/requests`)
 > **Post Needs & Make Offers:** Can't find an item? Post custom rental requirements with your target budget and pickup dates so other verified peers can submit instant offers.
-![Demand Hub](screenshots/6_demand_hub.png)
+![Demand Hub](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/6_demand_hub.png)
 
 ### 7. Verified Student Authentication (`/auth`)
 > **.ac.in Email & Dual-Route OTP Verification:** Fast and secure login using institutional `.ac.in` emails, Fast2SMS mobile OTP fallback, or one-click Google Sign-In with JWT sessions.
-![Authentication Modal](screenshots/7_auth_modal.png)
+![Authentication Modal](https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/7_auth_modal.png)
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🏗️ Tech Stack
 
@@ -127,7 +127,7 @@ Built for the Indian student ecosystem: ₹ INR pricing, `.ac.in` email verifica
 | Icons | Lucide React |
 | Fonts | Inter + Fraunces (Google Fonts) |
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 📂 Project Structure
 
@@ -175,7 +175,7 @@ rentmything/
 └── package.json
 `
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## ⚙️ Environment Variables
 
@@ -190,7 +190,7 @@ Set these in Render Dashboard → Environment (or a local .env file):
 | FAST2SMS_API_KEY | Optional | Fast2SMS key for mobile OTP delivery |
 | GOOGLE_CLIENT_ID | Optional | Google OAuth Client ID for Google Sign-In |
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🖥️ Running Locally
 
@@ -227,7 +227,7 @@ Backend API: http://localhost:3001
 
 > Vite proxies /api requests to port 3001 automatically.
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🚀 Deploying to Render
 
@@ -251,7 +251,7 @@ git commit -m describe your change
 git push origin main
 `
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🔑 How Key Features Work
 
@@ -278,7 +278,7 @@ git push origin main
 2. OTP verified → POST /api/auth/verify-otp → JWT token issued
 3. Token stored in localStorage and sent as Bearer header on all authenticated requests
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 🌐 API Reference
 
@@ -309,12 +309,12 @@ git push origin main
 | GET | /api/admin/stats | No | Admin stats |
 | GET | /api/health | No | Server health check |
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 ## 📄 License
 
 MIT License — free to use, modify, and distribute.
 
-<div align=center><img src=screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
+<div align=center><img src=https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/animated_divider.svg alt=Section Divider width=100% /></div>
 
 *Built with ❤️ for the Indian student community · IIT Delhi · IIT Bombay · BITS Pilani · IIM Ahmedabad*

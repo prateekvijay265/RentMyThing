@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/ai_hero_banner.png" alt="RentMyThing AI Banner" width="100%" />
+  <img src="https://raw.githubusercontent.com/prateekvijay265/RentMyThing/main/screenshots/ai_hero_banner_final.png" alt="RentMyThing AI Banner" width="100%" />
 </div>
 
 <div align="center">

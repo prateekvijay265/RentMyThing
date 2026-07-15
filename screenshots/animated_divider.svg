@@ -1,0 +1,23 @@
+﻿<svg xmlns=http://www.w3.org/2000/svg viewBox=0 0 1200 60 width=100% height=60>
+  <defs>
+    <linearGradient id=divGrad x1=0% y1=0% x2=100% y2=0%>
+      <stop offset=0% stop-color=#0f172a />
+      <stop offset=25% stop-color=#f43f5e />
+      <stop offset=50% stop-color=#f59e0b />
+      <stop offset=75% stop-color=#38bdf8 />
+      <stop offset=100% stop-color=#0f172a />
+    </linearGradient>
+  </defs>
+  <!-- Glowing Animated/Pulse Line -->
+  <path d=M 0 30 Q 300 5, 600 30 T 1200 30 fill=none stroke=url(#divGrad) stroke-width=3 opacity=0.8>
+    <animate attributeName=d 
+      dur=4s 
+      repeatCount=indefinite
+      values=M 0 30 Q 300 5, 600 30 T 1200 30;
+ M 0 30 Q 300 55, 600 30 T 1200 30;
+ M 0 30 Q 300 5, 600 30 T 1200 30 />
+  </path>
+  <circle cx=600 cy=30 r=5 fill=#f43f5e>
+    <animate attributeName=r values=3;7;3 dur=2s repeatCount=indefinite />
+  </circle>
+</svg>
